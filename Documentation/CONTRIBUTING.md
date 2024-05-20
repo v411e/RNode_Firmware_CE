@@ -96,7 +96,7 @@ An example of an entry using the SX1280 modem can be seen below:
 Please submit this, and any other support in different areas of the project your board may require, as a PR for my consideration.
 
 # Feature request
-Feature requests are welcomed, given that those requesting it are happy to write it themselves, or a contributor considers it to be important enough to them to write it themselves. They must be written and **properly** tested before being proposed as a pull request for the project on [GitHub](https://github.com/liberatedsystems/RNode_Firmware_CE). **Manufacturers are encouraged to contribute support for their products back to this repository**, and such support will be receieved gladly, given it does not effect support for other products or boards.
+Feature requests are welcomed, given that those requesting it are happy to write it themselves, or a contributor considers it to be important enough to them to write it themselves. They must be written and **properly** tested before being proposed as a pull request for the project on [GitHub](https://github.com/liberatedsystems/RNode_Firmware_CE). **Manufacturers are encouraged to contribute support for their products back to this repository**, and such support will be received gladly, given it does not effect support for other products or boards.
 
 # Caveat
 All contributions must not be written using **any** LLM (ChatGPT, etc.), please handwrite them **only**. Any PRs with proposed contributions which have been discovered to be written using an LLM will **NOT** be merged. The contributor concerned may rewrite their entire pull request **by hand** and it may be reconsidered for merging in the future. 
