@@ -14,12 +14,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #if MCU_VARIANT == MCU_ESP32
-  
-
-#elif MCU_VARIANT == MCU_NRF52
-#endif
-
-#if MCU_VARIANT == MCU_ESP32
   #if HAS_BLUETOOTH == true
     #include "BluetoothSerial.h"
     #include "esp_bt_main.h"
@@ -265,6 +259,8 @@ void bt_disable_pairing() {
 
 void bt_pairing_complete(uint16_t conn_handle, uint8_t auth_status) {
     if (auth_status == BLE_GAP_SEC_STATUS_SUCCESS) {
+      bt_state = BT_STATE_CONNECTED;
+      cable_state = CABLE_STATE_DISCONNECTED;
       bt_disable_pairing();
     } else {
       bt_ssp_pin = 0;
@@ -285,11 +281,6 @@ bool bt_passkey_callback(uint16_t conn_handle, uint8_t const passkey[6], bool ma
     return false;
 }
 
-void bt_connect_callback(uint16_t conn_handle) {
-    bt_state = BT_STATE_CONNECTED;
-    cable_state = CABLE_STATE_DISCONNECTED;
-}
-
 void bt_disconnect_callback(uint16_t conn_handle, uint8_t reason) {
     bt_state = BT_STATE_ON;
 }
@@ -308,10 +299,9 @@ bool bt_setup_hw() {
     Bluefruit.configPrphBandwidth(BANDWIDTH_MAX);
     Bluefruit.autoConnLed(false);
     if (Bluefruit.begin()) {
-      Bluefruit.setTxPower(4);    // Check bluefruit.h for supported values
+      Bluefruit.setTxPower(8);    // Check bluefruit.h for supported values
       Bluefruit.Security.setIOCaps(true, true, false);
       Bluefruit.Security.setPairPasskeyCallback(bt_passkey_callback);
-      Bluefruit.Periph.setConnectCallback(bt_connect_callback);
       Bluefruit.Periph.setDisconnectCallback(bt_disconnect_callback);
       Bluefruit.Security.setPairCompleteCallback(bt_pairing_complete);
       const ble_gap_addr_t gap_addr = Bluefruit.getAddr();
@@ -348,7 +338,6 @@ void bt_start() {
 
     blebas.begin();
 
-    // non-connectable advertising
     Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
     Bluefruit.Advertising.addTxPower();
 

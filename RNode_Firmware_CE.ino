@@ -166,6 +166,11 @@ void setup() {
       eeprom_update(eeprom_addr(ADDR_CONF_DSET), CONF_OK_BYTE);
       eeprom_update(eeprom_addr(ADDR_CONF_DINT), 0xFF);
     }
+    #if DISPLAY == EINK_BW || DISPLAY == EINK_3C
+    // Poll and process incoming serial commands whilst e-ink display is
+    // refreshing to make device still seem responsive
+    display_add_callback(process_serial);
+    #endif
     disp_ready = display_init();
     update_display();
   #endif
@@ -1308,6 +1313,11 @@ void loop() {
   #if HAS_INPUT
     input_read();
   #endif
+}
+
+void process_serial() {
+      buffer_serial();
+      if (!fifo_isempty(&serialFIFO)) serial_poll();
 }
 
 void sleep_now() {

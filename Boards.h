@@ -43,6 +43,10 @@
   #define BOARD_GENERIC_NRF52 0x50
   #define BOARD_RAK4631       0x51
 
+  #define OLED 0x01
+  #define EINK_BW 0x02
+  #define EINK_3C 0x03
+
   #if defined(__AVR_ATmega1284P__)
     #define PLATFORM PLATFORM_AVR
     #define MCU_VARIANT MCU_1284P
@@ -147,6 +151,7 @@
 
     #elif BOARD_MODEL == BOARD_TBEAM
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_PMU true
       #define HAS_BLUETOOTH true
       #define HAS_BLE true
@@ -184,6 +189,7 @@
 
     #elif BOARD_MODEL == BOARD_LORA32_V1_0
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_BLE true
       #define HAS_CONSOLE true
@@ -201,6 +207,7 @@
 
     #elif BOARD_MODEL == BOARD_LORA32_V2_0
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_BLE true
       #define HAS_CONSOLE true
@@ -218,6 +225,7 @@
 
     #elif BOARD_MODEL == BOARD_LORA32_V2_1
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_BLE true
       #define HAS_PMU true
@@ -239,6 +247,7 @@
 
     #elif BOARD_MODEL == BOARD_HELTEC32_V2
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
@@ -292,6 +301,7 @@
 
     #elif BOARD_MODEL == BOARD_RNODE_NG_20
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_NP true
       #define HAS_CONSOLE true
@@ -312,6 +322,7 @@
 
     #elif BOARD_MODEL == BOARD_RNODE_NG_21
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_CONSOLE true
       #define HAS_PMU true
@@ -346,6 +357,7 @@
       #define HAS_TCXO true
 
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_CONSOLE false
       #define HAS_BLUETOOTH false
       #define HAS_BLE true
@@ -397,11 +409,12 @@
   #elif MCU_VARIANT == MCU_NRF52
     #if BOARD_MODEL == BOARD_RAK4631
       #define HAS_EEPROM false
-      #define HAS_DISPLAY false
+      #define HAS_DISPLAY true
+      #define DISPLAY EINK_3C
       #define HAS_BLUETOOTH false
       #define HAS_BLE true
       #define HAS_CONSOLE false
-      #define HAS_PMU false
+      #define HAS_PMU true
       #define HAS_NP false
       #define HAS_SD false
       #define HAS_TCXO true
@@ -425,6 +438,13 @@
       const int pin_miso = 45;
       const int pin_busy = 46;
       const int pin_dio = 47;
+
+      const int pin_disp_cs = SS;
+      const int pin_disp_dc = WB_IO1;
+      const int pin_disp_reset = -1;
+      const int pin_disp_busy = WB_IO4;
+      const int pin_disp_en = WB_IO2;
+
       const int pin_led_rx = LED_BLUE;
       const int pin_led_tx = LED_GREEN;
       const int pin_tcxo_enable = -1;
