@@ -1,6 +1,6 @@
-# RNode Firmware
+# RNode Firmware - Community Edition
 
-This is the open firmware that powers RNode devices.
+This is the community maintained fork of the open firmware which powers RNode devices. It has been created to continue to expand development and support for more hardware devices, as the upstream repository is no longer accepting PRs for new hardware support. The original repository by Mark Qvist can be found [here](https://github.com/markqvist/RNode_Firmware).
 
 An RNode is an open, free and unrestricted digital radio transceiver. It enables anyone to send and receive any kind of data over both short and very long distances. RNodes can be used with many different kinds of programs and systems, but they are especially well suited for use with [Reticulum](https://reticulum.network).
 
@@ -14,28 +14,47 @@ The RNode system is primarily software, which *transforms* different kinds of av
 
 ## Latest Release
 
-The latest release, installable through `rnodeconf`, is version `1.68`. This release brings the following changes:
+The latest release, installable through `rnodeconf`, is version `1.72`. This release brings the following changes:
 
-- Fixed a bug in high-bandwidth optimisation
-- Fixed a potential memory overflow during firmware update
-- Fixed a bug in LoRa modem status updates
-- Updated bootstrap console with latest packages
+- Added support for flashing T3S3 boards
+- Added deep sleep support on T3S3
+- Various quality updates for nRF / RAK4631
+- Fixed a bug with antenna switch utilisation on RAK4631
+- Updated console image to include latest packages
 
-You must have at least version `2.1.3` of `rnodeconf` installed to update the RNode Firmware to version `1.67`. Get it by updating the `rns` package to at least version `0.6.4`.
+You must have at least version `2.1.3` of `rnodeconf` installed to update the RNode Firmware to version `1.72`. Get it by updating the `rns` package to at least version `0.6.4`.
 
-## A Self-Replicating System
+## Supported products and boards
 
-If you notice the presence of a circularity in the naming of the system as a whole, and the physical devices, it is no coincidence. Every RNode contains the seeds necessary to reproduce the system, the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), which is hosted locally on every RNode, and can be activated and accesses at any time - no Internet required.
+### Products
+| Name | Manufacturer | Link | Transceiver | MCU | Description |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| Handheld v2.x RNodes | [Mark Qvist](https://unsigned.io) | [Buy here](https://unsigned.io/shop/product/handheld-rnode) | SX1276 | ESP32 |
+| Original v1.x RNodes | [Mark Qvist](https://unsigned.io) | [Buy here](https://unsigned.io/shop/product/rnode) | SX1276 | ESP32 | This product is discontinued |
 
-The designs, guides and software stored within allows users to create more RNodes, and even to bootstrap entire communications networks, completely independently of existing infrastructure, or in situations where infrastructure has become unreliable or is broken.
+### Homebrew devices
+| Board name | Link | Transceiver | MCU | Description | 
+| :--- | :---: | :---: | :---: | :---: |
+| LilyGO LoRa32 v1.0 | [Buy here](https://www.lilygo.cc/products/lora32-v1-0) | SX1276/8 | ESP32 |
+| LilyGO T-BEAM v1.1 | [Buy here](https://www.lilygo.cc/products/t-beam-v1-1-esp32-lora-module) | SX1276/8 | ESP32 |
+| LilyGO LoRa32 v2.0 | No link | SX1276/8 | ESP32 | Discontinued? |
+| LilyGO LoRa32 v2.1 |  [Buy here](https://www.lilygo.cc/products/lora3) | SX1276/8 | ESP32 | With and without TCXO |
+| Heltec LoRa32 v2 | No link | SX1276/8 | ESP32 | Discontinued? |
+| Heltec LoRa32 v3 | [Buy here](https://heltec.org/project/wifi-lora-32-v3/) | SX1276/8 | ESP32 | 
+| Homebrew ESP32 boards | | Any supported | ESP32 | This can be any board with an Adafruit Feather (or generic) ESP32 chip |
 
-<img src="Documentation/images/126dcfe92fb7.webp" width="100%"/>
+It's easy to create your own RNodes from one of the supported development boards and devices. If a device or board you want to use is not yet supported, you are welcome to [join the effort](/CONTRIBUTING.md) and help create a board definition and pin mapping for it!
 
-<center><i>Where there is no Internet, RNodes will still communicate</i></center><br/><br/>
+<!--<img src="Documentation/images/devboards_1.webp" width="100%"/>-->
 
-The production of one particular RNode device is not an end, but the potential starting point of a new branch of devices on the tree of the RNode system as a whole.
+## Supported Transceiver Modules
+The RNode Firmware supports all transceiver modules based on the following chips:
+* Semtech SX1262
+* Semtech SX1276
+* Semtech SX1278
+* Semtech SX1280
 
-This tree fits into the larger biome of Free & Open Communications Systems, which I hope that you - by using communications tools like RNode - will help grow and prosper.
+These also must have an **SPI interface** and **DIO_0** pin connected to the MCU directly.
 
 ## One Tool, Many Uses
 
@@ -54,40 +73,29 @@ Depending on configuration, it can be used for local networking purposes, or to 
 
 ## Types & Performance
 
-RNodes can be made in many different configurations, and can use many different radio bands, but they will generally operate in the **433 MHz**, **868 MHz**, **915 MHZ** and **2.4 GHz** bands. They will usually offer configurable on-air data speeds between just a **few hundred bits per second**, up to **a couple of megabits per second**. Maximum output power will depend on the transceiver and PA setup used, but will generally lie between **17 dbm** and **27 dBm**.
+RNodes can be made in many different configurations, and can use many different radio bands, but they will generally operate in the **433 MHz**, **868 MHz**, **915 MHZ** and **2.4 GHz** bands. They will usually offer configurable on-air data speeds between just a **few hundred bits per second**, up to **hundreds of kilobits per second**. Maximum output power will depend on the transceiver and PA setup used, but will generally lie between **17 dbm (50mW)** and **27 dBm (500mW)**.
 
 The RNode system has been designed to allow reliable systems for basic human communications, over very wide areas, while using very little power, being cheap to build, free to operate, and near impossible to censor.
 
 While **speeds are lower** than WiFi, typical communication **ranges are many times higher**. Several kilometers can be acheived with usable bitrates, even in urban areas, and over **100 kilometers** can be achieved in line-of-sight conditions.
 
-## Supported Boards & Devices
-It's easy to create your own RNodes from one of the supported development boards and devices. If a device or board you want to use is not yet supported, you are welcome to join the effort and help creating a board definition and pin mapping for it!
+## A Self-Replicating System
 
-<img src="Documentation/images/devboards_1.webp" width="100%"/>
+If you notice the presence of a circularity in the naming of the system as a whole, and the physical devices, it is no coincidence. Every RNode contains the seeds necessary to reproduce the system, the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), which is hosted locally on every RNode, and can be activated and accesses at any time - no Internet required.
 
-The RNode Firmware supports the following boards:
+The designs, guides and software stored within allows users to create more RNodes, and even to bootstrap entire communications networks, completely independently of existing infrastructure, or in situations where infrastructure has become unreliable or is broken.
 
-- Handheld v2.x RNodes from [unsigned.io](https://unsigned.io/shop/product/handheld-rnode)
-- Original v1.x RNodes from [unsigned.io](https://unsigned.io/shop/product/rnode)
-- LilyGO T-Beam v1.1 devices with SX1276/8 LoRa chips
-- LilyGO T-Beam v1.1 devices with SX1262/8 LoRa chips
-- LilyGO LoRa32 v1.0 devices
-- LilyGO LoRa32 v2.0 devices
-- LilyGO LoRa32 v2.1 devices (with and without TCXO)
-- Heltec LoRa32 v2 devices
-- Heltec LoRa32 v3 devices
-- Homebrew RNodes based on ATmega1284p boards
-- Homebrew RNodes based on ATmega2560 boards
-- Homebrew RNodes based on Adafruit Feather ESP32 boards
-- Homebrew RNodes based on generic ESP32 boards
+<img src="Documentation/images/126dcfe92fb7.webp" width="100%"/>
 
-## Supported Transceiver Modules
-The RNode Firmware supports all transceiver modules based on **Semtech SX1276** or **Semtech SX1278** chips, that have an **SPI interface** and expose the **DIO_0** interrupt pin from the chip.
+<center><i>Where there is no Internet, RNodes will still communicate</i></center><br/><br/>
 
-Support for **SX1262**, **SX1268** and **SX1280** is being implemented. Please support the project with donations if you want this faster!
+The production of one particular RNode device is not an end, but the potential starting point of a new branch of devices on the tree of the RNode system as a whole.
+
+This tree fits into the larger biome of Free & Open Communications Systems, which I hope that you - by using communications tools like RNode - will help grow and prosper.
+
 
 ## Getting Started Fast
-You can download and flash the firmware to all the supported boards using the [RNode Config Utility](https://github.com/markqvist/rnodeconfigutil). All firmware releases are now handled and installed directly through the `rnodeconf` utility, which is included in the `rns` package. It can be installed via `pip`:
+You can download and flash the firmware to all the supported boards using [rnodeconf](https://github.com/markqvist/Reticulum). All firmware releases are handled and installed directly through the `rnodeconf` utility, which is included in the `rns` package. It can be installed via `pip`:
 
 ```
 # Install rnodeconf via rns package
@@ -104,10 +112,18 @@ For more detailed instruction and in-depth guides, you can have a look at some o
 - Learn the basics on how to [create and build your own RNode designs](https://unsigned.io/guides/2022_01_26_how-to-make-your-own-rnodes.html) from scratch
 - Once you've got the hang of it, start building RNodes for your community, or [even for selling them](https://unsigned.io/sell_rnodes.html)
 
-If you would rather just buy a pre-made unit, you can visit [my shop](https://unsigned.io/shop) and purchase my particular version of the [Handheld RNode](https://unsigned.io/shop/handheld-rnode/), which I can assure you is made to the highest quality, and with a lot of care.
+## Support development
+### Hardware donations
+If you would like to see support added for a board which you possess, you may donate it to myself, Jacob Eva, so that I can implement support for it into this project. There will be no official timescale given for implementation however, but I will try my best when I have time :) Please [contact me (scroll to the bottom)](https://liberatedsystems.co.uk/about) if you wish to donate hardware to the project.
 
-## Support RNode Development
-You can help support the continued development of open, free and private communications systems by donating via one of the following channels:
+### Purchasing products
+You can support the development of the RNode Firmware CE project by purchasing RNodes (to come in the future) and other products from [Liberated Embedded systems](https://liberatedsystems.co.uk), my online business. For more information on my business, please see [here](https://liberatedsystems.co.uk/about/).
+
+From time to time the creator of the [Reticulum](https://reticulum.network) project, Mark Qvist, produces his own RNodes and sells them through his [shop](https://unsigned.io/shop). You may support the development of open, free and private communications systems through purchasing these from him.
+
+### Monetary donations
+I, the maintainer of this fork, am currently not accepting monetary donations. These are instead better directed to [Mark Qvist](https://unsigned.io), who created the original repository this one is based on, and is the core developer of the [Reticulum](https://reticulum.network) project, which is what the RNode Firmware was designed to supplement as a network adapter.
+You can help support the continued development of open, free and private communications systems by donating to him via one of the following channels:
 
 - Monero:
   ```
@@ -124,14 +140,15 @@ You can help support the continued development of open, free and private communi
 - Ko-Fi: https://ko-fi.com/markqvist
 
 ## License & Use
-The RNode Firmware is Copyright © 2024 Mark Qvist / [unsigned.io](https://unsigned.io), and is made available under the **GNU General Public License v3.0**. The source code includes an SX1276 driver that is released under MIT License, and Copyright © 2018 Sandeep Mistry / Mark Qvist.
+The upstream RNode Firmware is Copyright © 2024 Mark Qvist / [unsigned.io](https://unsigned.io).
+The modified RNode Firmware CE (community edition) is Copyright © Jacob Eva / [Liberated Embedded Systems](https://liberatedsystems.co.uk) and is made available under the **GNU General Public License v3.0**. 
 
-You can obtain the source code from [git.unsigned.io](https://git.unsigned.io/markqvist/RNode_Firmware) or [GitHub](https://github.com/markqvist/rnode_firmware).
+The source code includes an SX1276 driver that is released under MIT License, and Copyright © 2018 Sandeep Mistry / Mark Qvist. The SX126x and SX128x drivers are adaptations of this original driver.
 
-Every RNode also includes an internal copy of it's own firmware source code, that can be downloaded through the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), by putting the RNode into Console Mode (which can be activated by pressing the reset button two times within two seconds).
+You can obtain the source code from [my business Git instance](https://git.liberatedsystems.co.uk/jacobeva/RNode_Firmware_CE) or [GitHub](https://github.com/liberatedsystems/RNode_Firmware_CE).
+
+Every RNode which supports the console functionality also includes an internal copy of it's own firmware source code, that can be downloaded through the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), by putting the RNode into Console Mode (which can be activated by pressing the reset button two times within two seconds).
 
 The RNode Ecosystem is free and non-proprietary, and actively seeks to distribute it's ownership and control. If you want to build RNodes for commercial purposes, including selling them, you must do so adhering to the Open Source licenses that the various parts of the RNode project is released under, and under your own responsibility.
 
 If you distribute or modify this work, you **must** adhere to the terms of the GPLv3, including, but not limited to, providing up-to-date source code upon distribution, displaying appropriate copyright and license notices in prominent positions of all conveyed works, and making users aware of their rights to the software under the GPLv3.
-
-In practice, this means that you can use the firmware commercially, but you must understand your obligation to provide all future users of the system with the same rights, that you have been provided by the GPLv3. If you intend using the RNode Firmware commercially, it is worth reading [this page](https://unsigned.io/sell_rnodes.html).
