@@ -11,7 +11,7 @@ This entry should include, at a minimum, the following:
 * RX and TX leds (preferably LEDs of different colours)
 
 An example of a minimal entry can be seen below:
-`
+```
 #elif BOARD_MODEL == BOARD_MY_WICKED_BOARD
   #define HAS_BLUETOOTH true
   #define HAS_PMU true
@@ -28,7 +28,7 @@ An example of a minimal entry can be seen below:
   // const int pin_busy = 0; not present
   const int pin_led_rx = 5;
   const int pin_led_tx = 6;
-`
+```
 
 In some cases the SPI pins will not be required, as they will be the default pins for the SPI library supporting the board anyway, and therefore do not need overriding in the config.
 
@@ -39,7 +39,7 @@ If the SX1262 is being used the following should also be considered:
 * the enable pin for the TCXO (if present)
 
 An example of an entry using the SX1262 modem can be seen below:
-`
+```
 #elif BOARD_MODEL == BOARD_MY_WICKED_BOARD
   #define HAS_BLUETOOTH true
   #define HAS_PMU true
@@ -62,13 +62,13 @@ An example of an entry using the SX1262 modem can be seen below:
   const int pin_tcxo_enable = -1;
   const int pin_led_rx = 5;
   const int pin_led_tx = 6;
-`
+```
 
 If the SX1280 is being used, the following should also be added:
 * the TXEN and RXEN pins
 
 An example of an entry using the SX1280 modem can be seen below:
-`
+```
 #elif BOARD_MODEL == BOARD_MY_WICKED_BOARD
   #define HAS_BLUETOOTH true
   #define HAS_PMU true
@@ -91,7 +91,7 @@ An example of an entry using the SX1280 modem can be seen below:
   const int pin_tcxo_enable = -1;
   const int pin_led_rx = 5;
   const int pin_led_tx = 6;
-`
+```
 
 Please submit this, and any other support in different areas of the project your board may require, as a PR for my consideration.
 

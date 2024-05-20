@@ -43,7 +43,7 @@ You must have at least version `2.1.3` of `rnodeconf` installed to update the RN
 | Heltec LoRa32 v3 | [Buy here](https://heltec.org/project/wifi-lora-32-v3/) | SX1276/8 | ESP32 | 
 | Homebrew ESP32 boards | | Any supported | ESP32 | This can be any board with an Adafruit Feather (or generic) ESP32 chip |
 
-It's easy to create your own RNodes from one of the supported development boards and devices. If a device or board you want to use is not yet supported, you are welcome to [join the effort](/CONTRIBUTING.md) and help create a board definition and pin mapping for it!
+It's easy to create your own RNodes from one of the supported development boards and devices. If a device or board you want to use is not yet supported, you are welcome to [join the effort](Documentation/CONTRIBUTING.md) and help create a board definition and pin mapping for it!
 
 <!--<img src="Documentation/images/devboards_1.webp" width="100%"/>-->
 
@@ -113,6 +113,9 @@ For more detailed instruction and in-depth guides, you can have a look at some o
 - Once you've got the hang of it, start building RNodes for your community, or [even for selling them](https://unsigned.io/sell_rnodes.html)
 
 ## Support development
+### Contributing
+You can contribute features and board support to the project if you wish. Please see [here](Documentation/CONTRIBUTING.md).
+
 ### Hardware donations
 If you would like to see support added for a board which you possess, you may donate it to myself, Jacob Eva, so that I can implement support for it into this project. There will be no official timescale given for implementation however, but I will try my best when I have time :) Please [contact me (scroll to the bottom)](https://liberatedsystems.co.uk/about) if you wish to donate hardware to the project.
 
@@ -138,6 +141,9 @@ You can help support the continued development of open, free and private communi
   35G9uWVzrpJJibzUwpNUQGQNFzLirhrYAH
   ```
 - Ko-Fi: https://ko-fi.com/markqvist
+
+## FAQ
+Please see [here](Documentation/FAQ.md).
 
 ## License & Use
 The upstream RNode Firmware is Copyright © 2024 Mark Qvist / [unsigned.io](https://unsigned.io).
