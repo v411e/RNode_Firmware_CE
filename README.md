@@ -145,7 +145,7 @@ The modified RNode Firmware CE (community edition) is Copyright © Jacob Eva / [
 
 The source code includes an SX1276 driver that is released under MIT License, and Copyright © 2018 Sandeep Mistry / Mark Qvist. The SX126x and SX128x drivers are adaptations of this original driver.
 
-You can obtain the source code from [my business Git instance](https://git.liberatedsystems.co.uk/jacobeva/RNode_Firmware_CE) or [GitHub](https://github.com/liberatedsystems/RNode_Firmware_CE).
+You can obtain the source code from [my business Git instance](https://git.liberatedsystems.co.uk/jacob.eva/RNode_Firmware_CE) or [GitHub](https://github.com/liberatedsystems/RNode_Firmware_CE).
 
 Every RNode which supports the console functionality also includes an internal copy of it's own firmware source code, that can be downloaded through the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), by putting the RNode into Console Mode (which can be activated by pressing the reset button two times within two seconds).
 
