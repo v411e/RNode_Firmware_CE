@@ -9,14 +9,14 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "Modem.h"
+#include "Interfaces.h"
 
 #define LORA_DEFAULT_SS_PIN    10
 #define LORA_DEFAULT_RESET_PIN 9
 #define LORA_DEFAULT_DIO0_PIN  2
 #define LORA_DEFAULT_RXEN_PIN  -1
 #define LORA_DEFAULT_TXEN_PIN  -1
-#define LORA_DEFAULT_BUSY_PIN  -1
+#define LORA_DEFAULT_BUSY_PIN  11
 
 #define PA_OUTPUT_RFO_PIN      0
 #define PA_OUTPUT_PA_BOOST_PIN 1

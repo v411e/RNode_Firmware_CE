@@ -206,14 +206,12 @@ void sx128x::loraMode() {
 
 void sx128x::waitOnBusy() {
     unsigned long time = millis();
-    if (_busy != -1) {
-        while (digitalRead(_busy) == HIGH)
-        {
-            if (millis() >= (time + 100)) {
-                break;
-            }
-            // do nothing
+    while (digitalRead(_busy) == HIGH)
+    {
+        if (millis() >= (time + 100)) {
+            break;
         }
+        // do nothing
     }
 }
 
