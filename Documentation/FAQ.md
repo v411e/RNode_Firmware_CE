@@ -8,7 +8,7 @@ It is also likely worth you reading [this material from Mark Qvist](https://unsi
 The size of the expected EEPROM file changed between these two releases. In my in(finite) wisdom, I forgot to mention that upgrading between these versions would require a format of the user data flash sector on the RAK4631 so that the file can be recreated. 
 
 ### Fix
-It can be fixed easily by running [this sketch](https://github.com/RAKWireless/RAK-nRF52-Arduino/blob/master/libraries/InternalFileSytem/examples/Internal_Format/Internal_Format.ino). Then, reprovision your EEPROM. For example, this can be done by using `rnodeconf -a`.
+It can be fixed easily by running [this sketch](https://github.com/RAKWireless/RAK-nRF52-Arduino/blob/master/libraries/InternalFileSytem/examples/Internal_Format/Internal_Format.ino) (you must open the serial monitor and press enter for it to actually format the flash). Then, reprovision your EEPROM. For example, this can be done by using `rnodeconf -a`.
 
 ## Write a hecking code of conduct!!
 no
