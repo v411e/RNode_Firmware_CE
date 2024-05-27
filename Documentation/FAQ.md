@@ -4,5 +4,11 @@ Yes! Feel free to use the firmware in this repository for your produced RNodes. 
 
 It is also likely worth you reading [this material from Mark Qvist](https://unsigned.io/sell_rnodes.html). Do consider donating to him if your venture is successful, without him this project would simply be a schizo fever dream.
 
+## Why does my RAK4631 not work after upgrading from v1.71 to v1.72 upstream?
+The size of the expected EEPROM file changed between these two releases. In my in(finite) wisdom, I forgot to mention that upgrading between these versions would require a format of the user data flash sector on the RAK4631 so that the file can be recreated. 
+
+### Fix
+It can be fixed easily by running [this sketch](https://github.com/RAKWireless/RAK-nRF52-Arduino/blob/master/libraries/InternalFileSytem/examples/Internal_Format/Internal_Format.ino). Then, reprovision your EEPROM. For example, this can be done by using `rnodeconf -a`.
+
 ## Write a hecking code of conduct!!
 no
