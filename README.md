@@ -30,13 +30,13 @@ You must have at least version `2.1.3` of `rnodeconf` installed to update the RN
 | Name | Manufacturer | Link | Transceiver | MCU | Description |
 | :---: | :---: | :---: | :---: | :---: | :---: |
 | Handheld v2.x RNodes | [Mark Qvist](https://unsigned.io) | [Buy here](https://unsigned.io/shop/product/handheld-rnode) | SX1276 | ESP32 |
-| Original v1.x RNodes | [Mark Qvist](https://unsigned.io) | [Buy here](https://unsigned.io/shop/product/rnode) | SX1276 | ESP32 | This product is discontinued |
 
 ### Homebrew devices
 | Board name | Link | Transceiver | MCU | Description | 
 | :--- | :---: | :---: | :---: | :---: |
+| RAK4631 | [Buy here](https://store.rakwireless.com/products/rak4631-lpwan-node?m=5&h=wisblock-core) | SX1262 | nRF52 |
+| LilyGO T-BEAM v1.1 | [Buy here](https://www.lilygo.cc/products/t-beam-v1-1-esp32-lora-module) | SX1276/8 or SX1262 | ESP32 |
 | LilyGO LoRa32 v1.0 | [Buy here](https://www.lilygo.cc/products/lora32-v1-0) | SX1276/8 | ESP32 |
-| LilyGO T-BEAM v1.1 | [Buy here](https://www.lilygo.cc/products/t-beam-v1-1-esp32-lora-module) | SX1276/8 | ESP32 |
 | LilyGO LoRa32 v2.0 | No link | SX1276/8 | ESP32 | Discontinued? |
 | LilyGO LoRa32 v2.1 |  [Buy here](https://www.lilygo.cc/products/lora3) | SX1276/8 | ESP32 | With and without TCXO |
 | Heltec LoRa32 v2 | No link | SX1276/8 | ESP32 | Discontinued? |
