@@ -42,6 +42,9 @@ prep-samd:
 prep-nrf:
 	arduino-cli core update-index --config-file arduino-cli.yaml
 	arduino-cli core install rakwireless:nrf52 --config-file arduino-cli.yaml
+	arduino-cli lib install "Crypto"
+	arduino-cli lib install "Adafruit GFX Library"
+	arduino-cli lib install "GxEPD2"
 	pip install adafruit-nrfutil --upgrade
 
 console-site:
