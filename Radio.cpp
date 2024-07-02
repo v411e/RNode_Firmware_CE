@@ -1819,18 +1819,20 @@ void sx128x::setPacketParams(uint32_t preamble, uint8_t headermode, uint8_t leng
   // because there is no access to these registers on the sx1280, we have
   // to set all these parameters at once or not at all.
   uint8_t buf[7];
-
   // calculate exponent and mantissa values for modem
   uint8_t e = 1;
   uint8_t m = 1;
   uint32_t preamblelen;
 
-  for (e <= 15; e++;) {
-      for (m <= 15; m++;) {
-          preamblelen = m * (uint32_t(1) << e);
+  while (e <= 15) {
+      while (m <= 15) {
+          preamblelen = m * (pow(2,e));
           if (preamblelen >= preamble) break;
+          m++;
       }
       if (preamblelen >= preamble) break;
+      m = 0;
+      e++;
   }
 
   buf[0] = (e << 4) | m;
