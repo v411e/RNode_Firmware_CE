@@ -66,14 +66,14 @@ public:
     _radio_online(false), _st_airtime_limit(0.0), _lt_airtime_limit(0.0),
     _airtime_lock(false), _airtime(0.0), _longterm_airtime(0.0),
     _local_channel_util(0.0), _total_channel_util(0.0),
-    _longterm_channel_util(0.0), _last_status_update(0), _last_dcd(0),
-    _stat_rx_ongoing(false), _stat_signal_detected(false),
-    _stat_signal_synced(false), _dcd_count(0), _dcd(false), _dcd_led(false),
+    _longterm_channel_util(0.0), _last_status_update(0),
+     _stat_signal_detected(false), _stat_signal_synced(false),_stat_rx_ongoing(false), _last_dcd(0), 
+     _dcd_count(0), _dcd(false), _dcd_led(false),
     _dcd_waiting(false), _dcd_wait_until(0), _dcd_sample(0),
     _post_tx_yield_timeout(0), _csma_slot_ms(50), _csma_p_min(0.1),
     _csma_p_max(0.8), _preambleLength(6), _lora_symbol_time_ms(0.0),
     _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
-    _onReceive(NULL), _packet{0} {};
+     _packet{0}, _onReceive(NULL) {};
     virtual int begin();
     virtual void end();
 
