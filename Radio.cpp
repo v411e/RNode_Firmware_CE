@@ -2192,21 +2192,102 @@ void sx128x::disableTCXO() {
 }
 
 void sx128x::setTxPower(int level, int outputPin) {
-    if (level > 13) {
-        level = 13;
-    } else if (level < -18) {
-        level = -18;
+    // PA calculation currently only works for the LoRa1280F27. Support for
+    // other assemblies would be appreciated in a PR.
+    if (outputPin == PA_OUTPUT_PA_BOOST_PIN) {
+        if (level > 27) {
+            level = 27;
+        } else if (level < 0) {
+            level = 0;
+        }
+
+        _txp = level;
+
+        int reg_value;
+
+        switch (level) {
+            case 0:
+                reg_value = -18;
+            case 1:
+                reg_value = -17;
+            case 2:
+                reg_value = -16;
+            case 3:
+                reg_value = -15;
+            case 4:
+                reg_value = -14;
+            case 5:
+                reg_value = -13;
+            case 6:
+                reg_value = -12;
+            case 7:
+                reg_value = -10;
+            case 8:
+                reg_value = -9;
+            case 9:
+                reg_value = -8;
+            case 10:
+                reg_value = -7;
+            case 11:
+                reg_value = -6;
+            case 12:
+                reg_value = -5;
+            case 13:
+                reg_value = -4;
+            case 14:
+                reg_value = -3;
+            case 15:
+                reg_value = -2;
+            case 16:
+                reg_value = -1;
+            case 17:
+                reg_value = 0;
+            case 18:
+                reg_value = 1;
+            case 19:
+                reg_value = 2;
+            case 20:
+                reg_value = 3;
+            case 21:
+                reg_value = 4;
+            case 22:
+                reg_value = 5;
+            case 23:
+                reg_value = 6;
+            case 24:
+                reg_value = 8;
+            case 25:
+                reg_value = 9;
+            case 26:
+                reg_value = 12;
+            case 27:
+                reg_value = 13;
+        }
+
+
+        uint8_t tx_buf[2];
+
+        tx_buf[0] = reg_value;
+        tx_buf[1] = 0xE0; // ramping time - 20 microseconds
+
+        executeOpcode(OP_TX_PARAMS_8X, tx_buf, 2);
+    } else {
+        if (level > 13) {
+            level = 13;
+        } else if (level < -18) {
+            level = -18;
+        }
+        _txp = level;
+
+        level = level + 18;
+
+        uint8_t tx_buf[2];
+
+        tx_buf[0] = level;
+        tx_buf[1] = 0xE0; // ramping time - 20 microseconds
+
+        executeOpcode(OP_TX_PARAMS_8X, tx_buf, 2);
     }
-    _txp = level;
-
-    level = level + 18;
-
-    uint8_t tx_buf[2];
-
-    tx_buf[0] = level;
-    tx_buf[1] = 0xE0; // ramping time - 20 microseconds
-
-    executeOpcode(OP_TX_PARAMS_8X, tx_buf, 2);
 }
 
 uint8_t sx128x::getTxPower() {

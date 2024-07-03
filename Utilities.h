@@ -965,8 +965,20 @@ void set_implicit_length(uint8_t len) {
 }
 
 void setTXPower(RadioInterface* radio, int txp) {
-    if (model == MODEL_11) radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
-    if (model == MODEL_12) radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
+    if (model == MODEL_11) {
+        if (interfaces[radio->getIndex()] == SX128X) {
+            radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+        } else {
+            radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
+        }
+    }
+    if (model == MODEL_12) {
+        if (interfaces[radio->getIndex()] == SX128X) {
+            radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+        } else {
+            radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
+        }
+    }
 
     if (model == MODEL_A1) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_A2) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
