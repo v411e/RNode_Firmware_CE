@@ -1550,7 +1550,10 @@ void sx127x::updateBitrate() {
 }
 
 void sx127x::clearIRQStatus() {
-    // todo, implement
+  int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
+
+  // Clear IRQs
+  writeRegister(REG_IRQ_FLAGS_7X, irqFlags);
 }
 
 // SX128x registers
