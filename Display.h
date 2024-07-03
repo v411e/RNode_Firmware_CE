@@ -143,6 +143,10 @@ const uint8_t pages = 3;
 uint8_t disp_page = START_PAGE;
 uint8_t interface_page = START_PAGE;
 
+uint8_t* online_interface_list;
+
+uint8_t online_interfaces = 0;
+
 #if DISPLAY == OLED
 #define WATERFALL_SIZE 46
 #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
@@ -369,7 +373,7 @@ void draw_lora_icon(RadioInterface* radio, int px, int py) {
   // todo: make display show other interfaces
   if (radio_online) {
         #if DISPLAY == OLED
-                if (interface_page == radio->getIndex()) {
+                if (online_interface_list[interface_page] == radio->getIndex()) {
                     stat_area.drawBitmap(px - 2, py - 2, bm_dot_sqr, 18, 18, GxEPD_WHITE, GxEPD_BLACK);
 
                     // redraw stat area on next refresh
@@ -381,7 +385,7 @@ void draw_lora_icon(RadioInterface* radio, int px, int py) {
                 stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, GxEPD_WHITE, GxEPD_BLACK);
                   }
         #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-                if (interface_page == radio->getIndex()) {
+                if (online_interface_list[interface_page] == radio->getIndex()) {
                     stat_area.drawBitmap(px - 2, py - 2, bm_dot_sqr, 34, 36, GxEPD_WHITE, GxEPD_BLACK);
 
                     // redraw stat area on next refresh
@@ -666,11 +670,17 @@ void draw_stat_area() {
     }
 
     if (millis()-last_interface_page_flip >= page_interval) {
-      int online_interfaces = 0;
+      int online_interfaces_check = 0;
+
+      // todo, is there a more efficient way of doing this?
       for (int i = 0; i < INTERFACE_COUNT; i++) {
           if (interface_obj[i]->getRadioOnline()) {
-              online_interfaces++;
+              online_interfaces_check++;
           }
+      }
+
+      if (online_interfaces != online_interfaces_check) {
+          online_interfaces = online_interfaces_check;
       }
 
       // cap at two for now, as only two boxes to symbolise interfaces
@@ -678,7 +688,20 @@ void draw_stat_area() {
       if (online_interfaces > 2) {
           online_interfaces = 2;
       }
-      interface_page = (++interface_page%online_interfaces);
+
+      online_interface_list = (uint8_t*)malloc(online_interfaces);
+      uint8_t index = 0;
+
+      for (int i = 0; i < INTERFACE_COUNT; i++) {
+          if (interface_obj[i]->getRadioOnline()) {
+              online_interface_list[index] = i;
+              index++;
+          }
+      }
+
+      if (online_interfaces > 0) {
+          interface_page = (++interface_page%online_interfaces);
+      }
       last_interface_page_flip = millis();
     }
 
@@ -789,7 +812,7 @@ void draw_disp_area() {
     if (!disp_ext_fb or bt_ssp_pin != 0) {
       if (radio_online && display_diagnostics) {
         #if DISPLAY == OLED
-          selected_radio = interface_obj[interface_page];
+          selected_radio = interface_obj[online_interface_list[interface_page]];
           disp_area.fillRect(0,8,disp_area.width(),37, SSD1306_BLACK); disp_area.fillRect(0,37,disp_area.width(),27, SSD1306_WHITE);
           disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(SSD1306_WHITE);
 
@@ -845,7 +868,7 @@ void draw_disp_area() {
           disp_area.drawBitmap(32+2, 50, bm_hg_high, 5, 9, SSD1306_BLACK, SSD1306_WHITE);
 
         #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-          selected_radio = interface_obj[interface_page];
+          selected_radio = interface_obj[online_interface_list[interface_page]];
           disp_area.fillRect(0,12,disp_area.width(),57, GxEPD_BLACK); disp_area.fillRect(0,69,disp_area.width(),56, GxEPD_WHITE);
           disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(GxEPD_WHITE);
           disp_area.setTextSize(2); // scale text 2x
@@ -1096,6 +1119,7 @@ void update_display(bool blank = false) {
       update_disp_area();
       display.display(true);
       #endif
+      free(online_interface_list);
       last_disp_update = millis();
     }
   }

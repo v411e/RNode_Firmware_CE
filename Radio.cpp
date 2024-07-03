@@ -15,8 +15,6 @@
   #define ISR_VECT
 #endif
 
-#define MAX_PKT_LENGTH                255
-
 // SX126x registers
 #define OP_RF_FREQ_6X               0x86
 #define OP_SLEEP_6X                 0x84
@@ -90,19 +88,19 @@
 #define FREQ_DIV_6X (double)pow(2.0, 25.0)
 #define FREQ_STEP_6X (double)(XTAL_FREQ_6X / FREQ_DIV_6X)
 
-extern int packet_interface;
+extern bool process_packet;
+extern uint8_t packet_interface;
 extern RadioInterface* interface_obj[];
 
 // ISRs cannot provide parameters to the functions they call. Since we have
-// multiple radio objects, we have to read each dio0 pin for each one and see
+// multiple interfaces, we have to read each dio0 pin for each one and see
 // which one is high. We can then use the index of this pin in the 2D array to
-// call the correct object.
-void onDio0Rise() {
+// signal the correct interface to the main loop 
+void ISR_VECT onDio0Rise() {
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         if (digitalRead(interface_pins[i][5]) == HIGH) {
+            process_packet = true;
             packet_interface = i;
-            RadioInterface* obj = interface_obj[i];
-            obj->handleDio0Rise();
             break;
         }
     }
@@ -110,14 +108,13 @@ void onDio0Rise() {
 
 sx126x::sx126x(uint8_t index, SPIClass spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
   RadioInterface(index),
-    _spiSettings(8E6, MSBFIRST, SPI_MODE0),
-    _spiModem(spi),
-  _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
-  _busy(busy), _rxen(rxen), _frequency(0), _txp(0), _sf(0x07), _bw(0x04),
-  _cr(0x01), _ldro(0x00), _packetIndex(0), _implicitHeaderMode(0),
-  _payloadLength(255), _crcMode(1), _fifo_tx_addr_ptr(0), _fifo_rx_addr_ptr(0),
-  _packet({0}), _preinit_done(false), _tcxo(tcxo),
-  _dio2_as_rf_switch(dio2_as_rf_switch)
+    _spiSettings(8E6, MSBFIRST, SPI_MODE0), _spiModem(spi), _ss(ss),
+    _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
+    _busy(busy), _rxen(rxen), _frequency(0), _txp(0), _sf(0x07), _bw(0x04),
+    _cr(0x01), _ldro(0x00), _packetIndex(0), _implicitHeaderMode(0),
+    _payloadLength(255), _crcMode(1), _fifo_tx_addr_ptr(0),
+    _fifo_rx_addr_ptr(0), _preinit_done(false), _tcxo(tcxo),
+    _dio2_as_rf_switch(dio2_as_rf_switch)
 {
   // overide Stream timeout value
   setTimeout(0);
@@ -966,7 +963,7 @@ void sx126x::implicitHeaderMode()
 }
 
 
-void ISR_VECT sx126x::handleDio0Rise()
+void sx126x::handleDio0Rise()
 {
     uint8_t buf[2];
 
@@ -1017,6 +1014,16 @@ void sx126x::updateBitrate() {
     }
 }
 
+void sx126x::clearIRQStatus() {
+    uint8_t buf[2];
+
+    buf[0] = 0x00;
+    buf[1] = 0x00;
+
+    executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
+
+    executeOpcode(OP_CLEAR_IRQ_STATUS_6X, buf, 2);
+}
 // SX127x registers
 #define REG_FIFO_7X                   0x00
 #define REG_OP_MODE_7X                0x01
@@ -1507,7 +1514,7 @@ void sx127x::optimizeModemSensitivity() {
   }
 }
 
-void ISR_VECT sx127x::handleDio0Rise() {
+void sx127x::handleDio0Rise() {
   int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
 
   // Clear IRQs
@@ -1540,6 +1547,10 @@ void sx127x::updateBitrate() {
     } else {
         _bitrate = 0;
     }
+}
+
+void sx127x::clearIRQStatus() {
+    // todo, implement
 }
 
 // SX128x registers
@@ -1590,10 +1601,10 @@ sx128x::sx128x(uint8_t index, SPIClass spi, bool tcxo, int ss, int sclk, int mos
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
   _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
-  _busy(busy), _rxen(rxen), _txen(txen), _frequency(0), _txp(0), _sf(0x50),
+  _busy(busy), _rxen(rxen), _txen(txen), _frequency(0), _txp(0), _sf(0x05),
   _bw(0x34), _cr(0x01), _packetIndex(0), _implicitHeaderMode(0),
   _payloadLength(255), _crcMode(0), _fifo_tx_addr_ptr(0), _fifo_rx_addr_ptr(0),
-  _packet({0}), _rxPacketLength(0), _preinit_done(false),
+  _rxPacketLength(0), _preinit_done(false),
   _tcxo(tcxo)
 {
   // overide Stream timeout value
@@ -2137,7 +2148,7 @@ void sx128x::receive(int size)
     implicitHeaderMode();
 
     // tell radio payload length
-    _rxPacketLength = size;
+    //_rxPacketLength = size;
     //_payloadLength = size;
     //setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
   } else {
@@ -2358,7 +2369,7 @@ void sx128x::implicitHeaderMode()
 }
 
 
-void ISR_VECT sx128x::handleDio0Rise()
+void sx128x::handleDio0Rise()
 {
     uint8_t buf[2];
 
@@ -2392,8 +2403,14 @@ void sx128x::updateBitrate() {
         _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
         _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
         _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        //_csma_slot_ms = _lora_symbol_time_ms*10;
-        float target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
+        _csma_slot_ms = 10;
+
+        float target_preamble_symbols;
+        if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
+            target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
+        } else {
+            target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
+        }
         if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
             target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
         } else {
@@ -2404,4 +2421,15 @@ void sx128x::updateBitrate() {
     } else {
         _bitrate = 0;
     }
+}
+
+void sx128x::clearIRQStatus() {
+    uint8_t buf[2];
+
+    buf[0] = 0x00;
+    buf[1] = 0x00;
+
+    executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
+
+    executeOpcode(OP_CLEAR_IRQ_STATUS_8X, buf, 2);
 }

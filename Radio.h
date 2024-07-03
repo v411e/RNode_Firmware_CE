@@ -12,6 +12,8 @@
 #include "Interfaces.h"
 #include "Boards.h"
 
+#define MAX_PKT_LENGTH                255
+
 // TX
 #define PA_OUTPUT_RFO_PIN 0
 #define PA_OUTPUT_PA_BOOST_PIN 1
@@ -31,6 +33,8 @@
 #define LORA_PREAMBLE_SYMBOLS_HW  4
 #define LORA_PREAMBLE_SYMBOLS_MIN 18
 #define LORA_PREAMBLE_TARGET_MS   15
+#define LORA_PREAMBLE_FAST_TARGET_MS 1
+#define LORA_FAST_BITRATE_THRESHOLD 40000
 
 #define RSSI_OFFSET 157
 
@@ -46,6 +50,7 @@ const uint8_t RX_ONGOING = 0x04;
 
 // forward declare Utilities.h LED functions
 void led_rx_on();
+
 void led_rx_off();
 void led_indicate_airtime_lock();
 
@@ -68,7 +73,7 @@ public:
     _post_tx_yield_timeout(0), _csma_slot_ms(50), _csma_p_min(0.1),
     _csma_p_max(0.8), _preambleLength(6), _lora_symbol_time_ms(0.0),
     _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
-    _onReceive(NULL) {};
+    _onReceive(NULL), _packet{0} {};
     virtual int begin();
     virtual void end();
 
@@ -123,6 +128,7 @@ public:
 
     virtual void updateBitrate();
     virtual void handleDio0Rise();
+    virtual void clearIRQStatus();
     uint32_t getBitrate() { return _bitrate; };
     uint8_t getIndex() { return _index; };
     void setRadioLock(bool lock) { _radio_locked = lock; };
@@ -248,6 +254,7 @@ public:
                   _dcd_count = 0;
               }
           }
+
     
           if (_dcd_led) {
               led_rx_on();
@@ -320,6 +327,7 @@ protected:
     float _lora_symbol_rate;
     float _lora_us_per_byte;
     uint32_t _bitrate;
+  uint8_t _packet[255];
     void (*_onReceive)(uint8_t, int);
 };
 
@@ -413,6 +421,7 @@ private:
   void reset(void);
   void calibrate(void);
   void calibrate_image(uint32_t frequency);
+  void clearIRQStatus();
 
 private:
   SPISettings _spiSettings;
@@ -437,7 +446,6 @@ private:
   int _crcMode;
   int _fifo_tx_addr_ptr;
   int _fifo_rx_addr_ptr;
-  uint8_t _packet[255];
   bool _preinit_done;
   uint8_t _index;
   bool _tcxo;
@@ -503,6 +511,7 @@ public:
   void updateBitrate();
 
   void handleDio0Rise();
+  void clearIRQStatus();
 private:
   void setSyncWord(uint8_t sw);
   void explicitHeaderMode();
@@ -598,6 +607,8 @@ public:
   void updateBitrate();
 
   void handleDio0Rise();
+
+  void clearIRQStatus();
 private:
   void writeBuffer(const uint8_t* buffer, size_t size);
   void readBuffer(uint8_t* buffer, size_t size);
@@ -647,7 +658,6 @@ private:
   int _crcMode;
   int _fifo_tx_addr_ptr;
   int _fifo_rx_addr_ptr;
-  uint8_t _packet[255];
   bool _preinit_done;
   int _rxPacketLength;
   uint8_t _index;

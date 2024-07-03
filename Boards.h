@@ -626,9 +626,8 @@
       #define HAS_PMU true
       #define HAS_NP false
       #define HAS_SD false
-      #define HAS_RF_SWITCH_RX_TX true
       #define CONFIG_UART_BUFFER_SIZE 6144
-      #define CONFIG_QUEUE_SIZE 6144
+      #define CONFIG_QUEUE_0_SIZE 6144
       #define CONFIG_QUEUE_MAX_LENGTH 200
       #define EEPROM_SIZE 296
       #define EEPROM_OFFSET EEPROM_SIZE-EEPROM_RESERVED
@@ -647,7 +646,7 @@
               true  // DIO2_AS_RF_SWITCH
           }
       };
-      const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
                   // SX1262
           {
               42, // pin_ss

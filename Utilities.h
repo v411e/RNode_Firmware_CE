@@ -1076,6 +1076,57 @@ uint8_t getInterfaceCommandByte(uint8_t index) {
     }
 }
 
+uint32_t getQueueSize(uint8_t index) {
+    switch (index) {
+        case 0:
+            return CONFIG_QUEUE_0_SIZE;
+        #if INTERFACE_COUNT > 1
+        case 1:
+            return CONFIG_QUEUE_1_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 2
+        case 2:
+            return CONFIG_QUEUE_2_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 3
+        case 3:
+            return CONFIG_QUEUE_3_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 4 
+        case 4:
+            return CONFIG_QUEUE_4_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 5
+        case 5:
+            return CONFIG_QUEUE_5_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 6
+        case 6:
+            return CONFIG_QUEUE_6_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 7
+        case 7:
+            return CONFIG_QUEUE_7_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 8
+        case 8:
+            return CONFIG_QUEUE_8_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 9
+        case 9:
+            return CONFIG_QUEUE_9_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 10
+        case 10:
+            return CONFIG_QUEUE_10_SIZE;
+        #endif
+        #if INTERFACE_COUNT > 11
+        case 11:
+            return CONFIG_QUEUE_11_SIZE;
+        #endif
+    }
+}
+
 void promisc_enable() {
 	promisc = true;
 }

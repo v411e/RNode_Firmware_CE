@@ -100,6 +100,9 @@
 	uint32_t stat_rx		= 0;
 	uint32_t stat_tx		= 0;
 
+    unsigned long last_tx   = 0;
+    unsigned long last_rx   = 0;
+
     // Power management
     #define BATTERY_STATE_DISCHARGING 0x01
     #define BATTERY_STATE_CHARGING 0x02
