@@ -41,18 +41,18 @@ void busyCallback(const void* p) {
 
 #include "Fonts/Org_01.h"
 #if BOARD_MODEL == BOARD_RNODE_NG_20 || BOARD_MODEL == BOARD_LORA32_V2_0
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
   #endif
 #elif BOARD_MODEL == BOARD_TBEAM
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST 13
   #define DISP_ADDR 0x3C
   #define DISP_CUSTOM_ADDR true
   #endif
 #elif BOARD_MODEL == BOARD_HELTEC32_V2 || BOARD_MODEL == BOARD_LORA32_V1_0
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST 16
   #define DISP_ADDR 0x3C
   #define SCL_OLED 15
@@ -64,12 +64,12 @@ void busyCallback(const void* p) {
   #define SCL_OLED 18
   #define SDA_OLED 17
 #elif BOARD_MODEL == BOARD_RNODE_NG_21
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
   #endif
 #elif BOARD_MODEL == BOARD_RNODE_NG_22
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST 21
   #define DISP_ADDR 0x3C
   #define SCL_OLED 17
@@ -188,8 +188,8 @@ void update_area_positions() {
 uint8_t display_contrast = 0x00;
 #if DISPLAY == OLED
 void set_contrast(Adafruit_SSD1306 *display, uint8_t contrast) {
-    display.ssd1306_command(SSD1306_SETCONTRAST);
-    display.ssd1306_command(contrast);
+    display->ssd1306_command(SSD1306_SETCONTRAST);
+    display->ssd1306_command(contrast);
 }
 #endif
 
@@ -374,15 +374,15 @@ void draw_lora_icon(RadioInterface* radio, int px, int py) {
   if (radio_online) {
         #if DISPLAY == OLED
                 if (online_interface_list[interface_page] == radio->getIndex()) {
-                    stat_area.drawBitmap(px - 2, py - 2, bm_dot_sqr, 18, 18, GxEPD_WHITE, GxEPD_BLACK);
+                    stat_area.drawBitmap(px - 1, py, bm_dot_sqr, 18, 18, SSD1306_WHITE, SSD1306_BLACK);
 
                     // redraw stat area on next refresh
                     stat_area_initialised = false;
                 }
                   if (radio->getRadioOnline()) {
-                stat_area.drawBitmap(px, py, bm_rf+1*32, 16, 16, GxEPD_WHITE, GxEPD_BLACK);
+                stat_area.drawBitmap(px, py, bm_rf+1*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
                   } else {
-                stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, GxEPD_WHITE, GxEPD_BLACK);
+                stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
                   }
         #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
                 if (online_interface_list[interface_page] == radio->getIndex()) {
