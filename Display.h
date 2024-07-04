@@ -374,7 +374,7 @@ void draw_lora_icon(RadioInterface* radio, int px, int py) {
   if (radio_online) {
         #if DISPLAY == OLED
                 if (online_interface_list[interface_page] == radio->getIndex()) {
-                    stat_area.drawBitmap(px - 1, py, bm_dot_sqr, 18, 18, SSD1306_WHITE, SSD1306_BLACK);
+                    stat_area.drawBitmap(px - 1, py-1, bm_dot_sqr, 18, 19, SSD1306_WHITE, SSD1306_BLACK);
 
                     // redraw stat area on next refresh
                     stat_area_initialised = false;
