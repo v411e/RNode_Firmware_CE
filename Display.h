@@ -143,7 +143,7 @@ const uint8_t pages = 3;
 uint8_t disp_page = START_PAGE;
 uint8_t interface_page = START_PAGE;
 
-uint8_t* online_interface_list;
+uint8_t online_interface_list[INTERFACE_COUNT] = {0};
 
 uint8_t online_interfaces = 0;
 
@@ -689,7 +689,6 @@ void draw_stat_area() {
           online_interfaces = 2;
       }
 
-      online_interface_list = (uint8_t*)malloc(online_interfaces);
       uint8_t index = 0;
 
       for (int i = 0; i < INTERFACE_COUNT; i++) {
@@ -1119,7 +1118,6 @@ void update_display(bool blank = false) {
       update_disp_area();
       display.display(true);
       #endif
-      free(online_interface_list);
       last_disp_update = millis();
     }
   }
