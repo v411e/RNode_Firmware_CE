@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-ESP_IDF_VER = 2.0.15
+ESP_IDF_VER = 2.0.17
 
 all: release
 
@@ -30,7 +30,7 @@ prep-avr:
 
 prep-esp32:
 	arduino-cli core update-index --config-file arduino-cli.yaml
-	arduino-cli core install esp32:esp32 --config-file arduino-cli.yaml
+	arduino-cli core install esp32:esp32@2.0.17 --config-file arduino-cli.yaml
 	arduino-cli lib install "Adafruit SSD1306"
 	arduino-cli lib install "XPowersLib"
 	arduino-cli lib install "Crypto"
