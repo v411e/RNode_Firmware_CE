@@ -134,10 +134,9 @@
       #define I2C_SDA 21
       #define I2C_SCL 22
       #define PMU_IRQ 35
+      #define INTERFACE_COUNT 1
       const int pin_led_rx = 2;
       const int pin_led_tx = 4;
-
-      #define INTERFACE_COUNT 1
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -168,10 +167,9 @@
       #define HAS_BLUETOOTH true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
       const int pin_led_rx = 14;
       const int pin_led_tx = 32;
-
-      #define INTERFACE_COUNT 1
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -205,6 +203,7 @@
       #define HAS_BLE true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
       const int pin_cs = 18;
       const int pin_reset = 14;
       const int pin_dio = 26;
@@ -215,8 +214,6 @@
         const int pin_led_rx = 2;
         const int pin_led_tx = 2;
       #endif
-
-      #define INTERFACE_COUNT 1
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1276};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -250,6 +247,7 @@
       #define HAS_BLE true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
       const int pin_cs = 18;
       const int pin_reset = 12;
       const int pin_dio = 26;
@@ -261,7 +259,6 @@
         const int pin_led_tx = 22;
       #endif
 
-      #define INTERFACE_COUNT 1
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -296,6 +293,9 @@
       #define HAS_PMU true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
+
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
       #if HAS_TCXO == true
         const bool interface_cfg[INTERFACE_COUNT][3] = { 
                         // SX127X
@@ -328,10 +328,6 @@
         const int pin_led_rx = 25;
         const int pin_led_tx = 25;
       #endif
-
-      #define INTERFACE_COUNT 1
-
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
 
       #if HAS_TCXO == false
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -366,6 +362,7 @@
       #define HAS_BLUETOOTH true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
       #if defined(EXTERNAL_LEDS)
         const int pin_led_rx = 36;
         const int pin_led_tx = 37;
@@ -373,8 +370,6 @@
         const int pin_led_rx = 25;
         const int pin_led_tx = 25;
       #endif
-
-      #define INTERFACE_COUNT 1
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -456,6 +451,7 @@
       #define HAS_NP true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
       const int pin_cs = 18;
       const int pin_reset = 12;
       const int pin_dio = 26;
@@ -469,6 +465,7 @@
           const int pin_led_tx = 22;
         #endif
       #endif
+
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1276};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -504,6 +501,7 @@
       #define HAS_NP true
       #define HAS_SD false
       #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
       const int pin_np = 12;
       const int pin_dac = 25;
       const int pin_adc = 34;
@@ -520,6 +518,7 @@
           const int pin_led_tx = 25;
         #endif
       #endif
+
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -548,7 +547,6 @@
 
     #elif BOARD_MODEL == BOARD_RNODE_NG_22
       #define IS_ESP32S3 true
-      #define MODEM SX1262
 
       #define HAS_DISPLAY true
       #define DISPLAY OLED
@@ -564,6 +562,7 @@
       #define HAS_SLEEP true
       #define PIN_WAKEUP GPIO_NUM_0
       #define WAKEUP_LEVEL 0
+      #define INTERFACE_COUNT 1
       // #define PIN_DISP_SLEEP 21
       // #define DISP_SLEEP_LEVEL HIGH
       const int pin_btn_usr1 = 0;
@@ -585,6 +584,7 @@
           const int pin_led_tx = 37;
         #endif
       #endif
+
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
