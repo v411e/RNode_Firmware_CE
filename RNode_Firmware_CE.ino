@@ -17,6 +17,12 @@
 #include <SPI.h>
 #include "Utilities.h"
 
+#if BOARD_MODEL == BOARD_HELTEC32_V3
+// Default stack size for loop function on Heltec32 V3 is not large enough,
+// must be increased to 11kb to prevent crashes.
+SET_LOOP_TASK_STACK_SIZE(11 * 1024);  // 11KB
+#endif
+
 FIFOBuffer serialFIFO;
 uint8_t serialBuffer[CONFIG_UART_BUFFER_SIZE+1];
 
