@@ -41,18 +41,18 @@ void busyCallback(const void* p) {
 
 #include "Fonts/Org_01.h"
 #if BOARD_MODEL == BOARD_RNODE_NG_20 || BOARD_MODEL == BOARD_LORA32_V2_0
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
   #endif
 #elif BOARD_MODEL == BOARD_TBEAM
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST 13
   #define DISP_ADDR 0x3C
   #define DISP_CUSTOM_ADDR true
   #endif
 #elif BOARD_MODEL == BOARD_HELTEC32_V2 || BOARD_MODEL == BOARD_LORA32_V1_0
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST 16
   #define DISP_ADDR 0x3C
   #define SCL_OLED 15
@@ -64,12 +64,12 @@ void busyCallback(const void* p) {
   #define SCL_OLED 18
   #define SDA_OLED 17
 #elif BOARD_MODEL == BOARD_RNODE_NG_21
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
   #endif
 #elif BOARD_MODEL == BOARD_RNODE_NG_22
-  #if BOARD_TYPE == OLED
+  #if DISPLAY == OLED
   #define DISP_RST 21
   #define DISP_ADDR 0x3C
   #define SCL_OLED 17
@@ -130,9 +130,22 @@ unsigned char fb[512];
 uint32_t last_disp_update = 0;
 int disp_update_interval = 1000/disp_target_fps;
 uint32_t last_page_flip = 0;
+uint32_t last_interface_page_flip = 0;
 int page_interval = 4000;
 bool device_signatures_ok();
 bool device_firmware_ok();
+
+bool stat_area_initialised = false;
+bool radio_online = false;
+
+#define START_PAGE 0
+const uint8_t pages = 3;
+uint8_t disp_page = START_PAGE;
+uint8_t interface_page = START_PAGE;
+
+uint8_t online_interface_list[INTERFACE_COUNT] = {0};
+
+uint8_t online_interfaces = 0;
 
 #if DISPLAY == OLED
 #define WATERFALL_SIZE 46
@@ -142,8 +155,8 @@ bool device_firmware_ok();
 // add more eink compatible boards here
 #endif
 
-int waterfall[WATERFALL_SIZE];
-int waterfall_head = 0;
+int waterfall[INTERFACE_COUNT][WATERFALL_SIZE] = {0};
+int waterfall_head[INTERFACE_COUNT] = {0};
 
 int p_ad_x = 0;
 int p_ad_y = 0;
@@ -175,8 +188,8 @@ void update_area_positions() {
 uint8_t display_contrast = 0x00;
 #if DISPLAY == OLED
 void set_contrast(Adafruit_SSD1306 *display, uint8_t contrast) {
-    display.ssd1306_command(SSD1306_SETCONTRAST);
-    display.ssd1306_command(contrast);
+    display->ssd1306_command(SSD1306_SETCONTRAST);
+    display->ssd1306_command(contrast);
 }
 #endif
 
@@ -286,9 +299,6 @@ bool display_init() {
       #endif
 
       update_area_positions();
-      for (int i = 0; i < WATERFALL_SIZE; i++) {
-        waterfall[i] = 0;
-      }
 
       last_page_flip = millis();
 
@@ -359,34 +369,63 @@ void draw_bt_icon(int px, int py) {
   }
 }
 
-void draw_lora_icon(int px, int py) {
+void draw_lora_icon(RadioInterface* radio, int px, int py) {
+  // todo: make display show other interfaces
   if (radio_online) {
-    #if DISPLAY == OLED
-        stat_area.drawBitmap(px, py, bm_rf+1*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
-    #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-        stat_area.drawBitmap(px, py, bm_rf+1*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
-    #endif
-  } else {
-    #if DISPLAY == OLED
-        stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
-    #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-        stat_area.drawBitmap(px, py, bm_rf+0*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
-    #endif
-  }
+        #if DISPLAY == OLED
+                if (online_interface_list[interface_page] == radio->getIndex()) {
+                    stat_area.drawBitmap(px - 1, py-1, bm_dot_sqr, 18, 19, SSD1306_WHITE, SSD1306_BLACK);
+
+                    // redraw stat area on next refresh
+                    stat_area_initialised = false;
+                }
+                  if (radio->getRadioOnline()) {
+                stat_area.drawBitmap(px, py, bm_rf+1*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
+                  } else {
+                stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
+                  }
+        #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
+                if (online_interface_list[interface_page] == radio->getIndex()) {
+                    stat_area.drawBitmap(px - 2, py - 2, bm_dot_sqr, 34, 36, GxEPD_WHITE, GxEPD_BLACK);
+
+                    // redraw stat area on next refresh
+                    stat_area_initialised = false;
+                }
+                  if (radio->getRadioOnline()) {
+                stat_area.drawBitmap(px, py, bm_rf+1*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
+                  } else {
+                stat_area.drawBitmap(px, py, bm_rf+0*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
+                  }
+        #endif
+      } else {
+        #if DISPLAY == OLED
+            stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
+        #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
+            stat_area.drawBitmap(px, py, bm_rf+0*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
+        #endif
+      }
 }
 
 void draw_mw_icon(int px, int py) {
-  if (mw_radio_online) {
-    #if DISPLAY == OLED
-        stat_area.drawBitmap(px, py, bm_rf+3*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
-    #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-        stat_area.drawBitmap(px, py, bm_rf+3*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
-    #endif
+  if (INTERFACE_COUNT >= 2) {
+      if (interface_obj[1]->getRadioOnline()) {
+        #if DISPLAY == OLED
+            stat_area.drawBitmap(px, py, bm_rf+3*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
+        #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
+            stat_area.drawBitmap(px, py, bm_rf+3*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
+        #endif
+      } else {
+        #if DISPLAY == OLED
+            stat_area.drawBitmap(px, py, bm_rf+2*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
+        #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
+            stat_area.drawBitmap(px, py, bm_rf+2*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
+        #endif
+      }
   } else {
     #if DISPLAY == OLED
-        stat_area.drawBitmap(px, py, bm_rf+2*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
+      stat_area.drawBitmap(px, py, bm_rf+2*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
     #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-        stat_area.drawBitmap(px, py, bm_rf+2*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
+      stat_area.drawBitmap(px, py, bm_rf+2*128, 30, 32, GxEPD_WHITE, GxEPD_BLACK);
     #endif
   }
 }
@@ -479,7 +518,7 @@ void draw_battery_bars(int px, int py) {
 void draw_quality_bars(int px, int py) {
   signed char t_snr = (signed int)last_snr_raw;
   int snr_int = (int)t_snr;
-  float snr_min = Q_SNR_MIN_BASE-(int)lora_sf*Q_SNR_STEP;
+  float snr_min = Q_SNR_MIN_BASE-(int)interface_obj[interface_page]->getSpreadingFactor()*Q_SNR_STEP;
   float snr_span = (Q_SNR_MAX-snr_min);
   float snr = ((int)snr_int) * 0.25;
   float quality = ((snr-snr_min)/(snr_span))*100;
@@ -593,13 +632,13 @@ void draw_signal_bars(int px, int py) {
 #define WF_PIXEL_WIDTH 22
 #endif
 void draw_waterfall(int px, int py) {
-  int rssi_val = current_rssi;
+  int rssi_val = interface_obj[interface_page]->currentRssi();
   if (rssi_val < WF_RSSI_MIN) rssi_val = WF_RSSI_MIN;
   if (rssi_val > WF_RSSI_MAX) rssi_val = WF_RSSI_MAX;
   int rssi_normalised = ((rssi_val - WF_RSSI_MIN)*(1.0/WF_RSSI_SPAN))*WF_PIXEL_WIDTH;
 
-  waterfall[waterfall_head++] = rssi_normalised;
-  if (waterfall_head >= WATERFALL_SIZE) waterfall_head = 0;
+  waterfall[interface_page][waterfall_head[interface_page]++] = rssi_normalised;
+  if (waterfall_head[interface_page] >= WATERFALL_SIZE) waterfall_head[interface_page] = 0;
 
   #if DISPLAY == OLED
   stat_area.fillRect(px,py,WF_PIXEL_WIDTH, WATERFALL_SIZE, SSD1306_BLACK);
@@ -607,8 +646,8 @@ void draw_waterfall(int px, int py) {
   stat_area.fillRect(px,py,WF_PIXEL_WIDTH, WATERFALL_SIZE, GxEPD_BLACK);
   #endif
   for (int i = 0; i < WATERFALL_SIZE; i++){
-    int wi = (waterfall_head+i)%WATERFALL_SIZE;
-    int ws = waterfall[wi];
+    int wi = (waterfall_head[interface_page]+i)%WATERFALL_SIZE;
+    int ws = waterfall[interface_page][wi];
     if (ws > 0) {
       #if DISPLAY == OLED
         stat_area.drawLine(px, py+i, px+ws-1, py+i, SSD1306_WHITE);
@@ -619,7 +658,6 @@ void draw_waterfall(int px, int py) {
   }
 }
 
-bool stat_area_initialised = false;
 void draw_stat_area() {
   if (device_init_done) {
     if (!stat_area_initialised) {
@@ -631,19 +669,69 @@ void draw_stat_area() {
       stat_area_initialised = true;
     }
 
+    if (millis()-last_interface_page_flip >= page_interval) {
+      int online_interfaces_check = 0;
+
+      // todo, is there a more efficient way of doing this?
+      for (int i = 0; i < INTERFACE_COUNT; i++) {
+          if (interface_obj[i]->getRadioOnline()) {
+              online_interfaces_check++;
+          }
+      }
+
+      if (online_interfaces != online_interfaces_check) {
+          online_interfaces = online_interfaces_check;
+      }
+
+      // cap at two for now, as only two boxes to symbolise interfaces
+      // available on display
+      if (online_interfaces > 2) {
+          online_interfaces = 2;
+      }
+
+      uint8_t index = 0;
+
+      for (int i = 0; i < INTERFACE_COUNT; i++) {
+          if (interface_obj[i]->getRadioOnline()) {
+              online_interface_list[index] = i;
+              index++;
+          }
+      }
+
+      if (online_interfaces > 0) {
+          interface_page = (++interface_page%online_interfaces);
+      }
+      last_interface_page_flip = millis();
+    }
+
     #if DISPLAY == OLED
     draw_cable_icon(3, 8);
     draw_bt_icon(3, 30);
-    draw_lora_icon(45, 8);
-    draw_mw_icon(45, 30);
+    draw_lora_icon(interface_obj[0], 45, 8);
+
+    // todo, expand support to show more than two interfaces on screen
+    if (INTERFACE_COUNT > 1) {
+        draw_lora_icon(interface_obj[1], 45, 30);
+    }
     draw_battery_bars(4, 58);
     #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
     draw_cable_icon(6, 18);
     draw_bt_icon(6, 60);
-    draw_lora_icon(86, 18);
-    draw_mw_icon(86, 60);
+    draw_lora_icon(interface_obj[0], 86, 18);
+
+    // todo, expand support to show more than two interfaces on screen
+    if (INTERFACE_COUNT > 1) {
+        draw_lora_icon(interface_obj[1], 86, 60);
+    }
     draw_battery_bars(8, 113);
     #endif
+    radio_online = false;
+    for (int i = 0; i < INTERFACE_COUNT; i++) {
+        if (interface_obj[i]->getRadioOnline()) {
+            radio_online = true;
+            break;
+        }
+    }
     if (radio_online) {
       #if DISPLAY == OLED
       draw_quality_bars(28, 56);
@@ -701,9 +789,6 @@ void update_stat_area() {
   }
 }
 
-#define START_PAGE 0
-const uint8_t pages = 3;
-uint8_t disp_page = START_PAGE;
 void draw_disp_area() {
   if (!device_init_done || firmware_update_mode) {
     uint8_t p_by = 37;
@@ -726,6 +811,7 @@ void draw_disp_area() {
     if (!disp_ext_fb or bt_ssp_pin != 0) {
       if (radio_online && display_diagnostics) {
         #if DISPLAY == OLED
+          selected_radio = interface_obj[online_interface_list[interface_page]];
           disp_area.fillRect(0,8,disp_area.width(),37, SSD1306_BLACK); disp_area.fillRect(0,37,disp_area.width(),27, SSD1306_WHITE);
           disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(SSD1306_WHITE);
 
@@ -734,26 +820,26 @@ void draw_disp_area() {
           disp_area.setCursor(14, 13);
           disp_area.print("@");
           disp_area.setCursor(21, 13);
-          disp_area.printf("%.1fKbps", (float)lora_bitrate/1000.0);
+          disp_area.printf("%.1fKbps", (float)(selected_radio->getBitrate())/1000.0);
 
           disp_area.setCursor(2, 23-1);
           disp_area.print("Airtime:");
 
           disp_area.setCursor(11, 33-1);
-          if (total_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", airtime*100.0);
+          if (selected_radio->getTotalChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getAirtime()*100.0);
           } else {
-            disp_area.printf("%.0f%%", airtime*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getAirtime()*100.0);
           }
 
           disp_area.drawBitmap(2, 26-1, bm_hg_low, 5, 9, SSD1306_WHITE, SSD1306_BLACK);
 
           disp_area.setCursor(32+11, 33-1);
 
-          if (longterm_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", longterm_airtime*100.0);
+          if (selected_radio->getLongtermChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getLongtermAirtime()*100.0);
           } else {
-            disp_area.printf("%.0f%%", longterm_airtime*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getLongtermAirtime()*100.0);
           }
           disp_area.drawBitmap(32+2, 26-1, bm_hg_high, 5, 9, SSD1306_WHITE, SSD1306_BLACK);
 
@@ -765,22 +851,23 @@ void draw_disp_area() {
           disp_area.print("Load:");
 
           disp_area.setCursor(11, 57);
-          if (total_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", total_channel_util*100.0);
+          if (selected_radio->getTotalChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getTotalChannelUtil()*100.0);
           } else {
-            disp_area.printf("%.0f%%", total_channel_util*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getTotalChannelUtil()*100.0);
           }
           disp_area.drawBitmap(2, 50, bm_hg_low, 5, 9, SSD1306_BLACK, SSD1306_WHITE);
         
           disp_area.setCursor(32+11, 57);
-          if (longterm_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", longterm_channel_util*100.0);
+          if (selected_radio->getLongtermChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getLongtermChannelUtil()*100.0);
           } else {
-            disp_area.printf("%.0f%%", longterm_channel_util*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getLongtermChannelUtil()*100.0);
           }
           disp_area.drawBitmap(32+2, 50, bm_hg_high, 5, 9, SSD1306_BLACK, SSD1306_WHITE);
 
         #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
+          selected_radio = interface_obj[online_interface_list[interface_page]];
           disp_area.fillRect(0,12,disp_area.width(),57, GxEPD_BLACK); disp_area.fillRect(0,69,disp_area.width(),56, GxEPD_WHITE);
           disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(GxEPD_WHITE);
           disp_area.setTextSize(2); // scale text 2x
@@ -790,25 +877,25 @@ void draw_disp_area() {
           disp_area.setCursor(14*2, 22);
           disp_area.print("@");
           disp_area.setCursor(21*2, 22);
-          disp_area.printf("%.1fKbps", (float)lora_bitrate/1000.0);
+          disp_area.printf("%.1fKbps", (float)(selected_radio->getBitrate())/1000.0);
 
           disp_area.setCursor(2, 36);
           disp_area.print("Airtime:");
 
           disp_area.setCursor(7+12, 53);
-          if (total_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", airtime*100.0);
+          if (selected_radio->getTotalChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getAirtime()*100.0);
           } else {
-            disp_area.printf("%.0f%%", airtime*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getAirtime()*100.0);
           }
 
           disp_area.drawBitmap(2, 41, bm_hg_low, 10, 18, GxEPD_WHITE, GxEPD_BLACK);
 
           disp_area.setCursor(64+17, 53);
-          if (longterm_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", longterm_airtime*100.0);
+          if (selected_radio->getLongtermChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getLongtermAirtime()*100.0);
           } else {
-            disp_area.printf("%.0f%%", longterm_airtime*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getLongtermAirtime()*100.0);
           }
           disp_area.drawBitmap(64, 41, bm_hg_high, 10, 18, GxEPD_WHITE, GxEPD_BLACK);
 
@@ -820,18 +907,18 @@ void draw_disp_area() {
           disp_area.print("Load:");
         
           disp_area.setCursor(7+12, 110);
-          if (total_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", total_channel_util*100.0);
+          if (selected_radio->getTotalChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getTotalChannelUtil()*100.0);
           } else {
-            disp_area.printf("%.0f%%", total_channel_util*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getTotalChannelUtil()*100.0);
           }
           disp_area.drawBitmap(2, 98, bm_hg_low, 10, 18, GxEPD_BLACK, GxEPD_WHITE);
 
           disp_area.setCursor(64+17, 110);
-          if (longterm_channel_util < 0.099) {
-            disp_area.printf("%.1f%%", longterm_channel_util*100.0);
+          if (selected_radio->getLongtermChannelUtil() < 0.099) {
+            disp_area.printf("%.1f%%", selected_radio->getLongtermChannelUtil()*100.0);
           } else {
-            disp_area.printf("%.0f%%", longterm_channel_util*100.0);
+            disp_area.printf("%.0f%%", selected_radio->getLongtermChannelUtil()*100.0);
           }
           disp_area.drawBitmap(64, 98, bm_hg_high, 10, 18, GxEPD_BLACK, GxEPD_WHITE);
         #endif
@@ -852,7 +939,7 @@ void draw_disp_area() {
         }
       }
 
-      if (!hw_ready || radio_error || !device_firmware_ok()) {
+      if (!hw_ready || !device_firmware_ok()) {
         if (!device_firmware_ok()) {
           #if DISPLAY == OLED
             disp_area.drawBitmap(0, 37, bm_fw_corrupt, disp_area.width(), 27, SSD1306_WHITE, SSD1306_BLACK);
@@ -860,7 +947,7 @@ void draw_disp_area() {
             disp_area.drawBitmap(0, 71, bm_fw_corrupt, disp_area.width(), 54, GxEPD_WHITE, GxEPD_BLACK);
           #endif
         } else {
-          if (!modem_installed) {
+          if (!modems_installed) {
             #if DISPLAY == OLED
               disp_area.drawBitmap(0, 37, bm_no_radio, disp_area.width(), 27, SSD1306_WHITE, SSD1306_BLACK);
             #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)

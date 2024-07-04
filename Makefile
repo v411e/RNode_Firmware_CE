@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-ESP_IDF_VER = 2.0.15
+ESP_IDF_VER = 2.0.17
 
 all: release
 
@@ -30,7 +30,7 @@ prep-avr:
 
 prep-esp32:
 	arduino-cli core update-index --config-file arduino-cli.yaml
-	arduino-cli core install esp32:esp32 --config-file arduino-cli.yaml
+	arduino-cli core install esp32:esp32@2.0.17 --config-file arduino-cli.yaml
 	arduino-cli lib install "Adafruit SSD1306"
 	arduino-cli lib install "XPowersLib"
 	arduino-cli lib install "Crypto"
@@ -207,15 +207,10 @@ upload-rak4631:
 
 release: release-all
 
-release-all: console-site spiffs-image release-rnode release-tbeam release-tbeam_sx1262 release-lora32_v10 release-lora32_v20 release-lora32_v21 release-lora32_v10_extled release-lora32_v20_extled release-lora32_v21_extled release-lora32_v21_tcxo release-featheresp32 release-genericesp32 release-heltec32_v2 release-heltec32_v3 release-heltec32_v2_extled release-rnode_ng_20 release-rnode_ng_21 release-t3s3 release-hashes
+release-all: console-site spiffs-image release-tbeam release-tbeam_sx1262 release-lora32_v10 release-lora32_v20 release-lora32_v21 release-lora32_v10_extled release-lora32_v20_extled release-lora32_v21_extled release-lora32_v21_tcxo release-featheresp32 release-genericesp32 release-heltec32_v2 release-heltec32_v3 release-heltec32_v2_extled release-rnode_ng_20 release-rnode_ng_21 release-t3s3 release-hashes
 
 release-hashes:
 	python ./release_hashes.py > ./Release/release.json
-
-release-rnode:
-	arduino-cli compile --fqbn unsignedio:avr:rnode -e
-	cp build/unsignedio.avr.rnode/RNode_Firmware_CE.ino.hex Release/rnode_firmware.hex
-	rm -r build
 
 release-tbeam:
 	arduino-cli compile --fqbn esp32:esp32:t-beam -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x33\""
