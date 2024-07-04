@@ -373,7 +373,7 @@ void draw_lora_icon(RadioInterface* radio, int px, int py) {
   // todo: make display show other interfaces
   if (radio_online) {
         #if DISPLAY == OLED
-                if (online_interface_list[interface_page] == radio->getIndex()) {
+                if (online_interface_list[interface_page] != radio->getIndex()) {
                     stat_area.drawBitmap(px - 1, py-1, bm_dot_sqr, 18, 19, SSD1306_WHITE, SSD1306_BLACK);
 
                     // redraw stat area on next refresh
@@ -385,7 +385,7 @@ void draw_lora_icon(RadioInterface* radio, int px, int py) {
                 stat_area.drawBitmap(px, py, bm_rf+0*32, 16, 16, SSD1306_WHITE, SSD1306_BLACK);
                   }
         #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
-                if (online_interface_list[interface_page] == radio->getIndex()) {
+                if (online_interface_list[interface_page] != radio->getIndex()) {
                     stat_area.drawBitmap(px - 2, py - 2, bm_dot_sqr, 34, 36, GxEPD_WHITE, GxEPD_BLACK);
 
                     // redraw stat area on next refresh
