@@ -80,7 +80,7 @@
     //
     // #define BOARD_MODEL BOARD_GENERIC_ESP32
     #define CONFIG_UART_BUFFER_SIZE 6144
-    #define CONFIG_QUEUE_SIZE 6144
+    #define CONFIG_QUEUE_0_SIZE 6144
     #define CONFIG_QUEUE_MAX_LENGTH 200
 
     #define EEPROM_SIZE 1024
@@ -428,12 +428,12 @@
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
           {
-              false, // DEFAULT_SPI
+              true, // DEFAULT_SPI
               true, // HAS_TCXO
               true  // DIO2_AS_RF_SWITCH
           }, 
       };
-      const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
                   // SX1262
           {
               8, // pin_ss
