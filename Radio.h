@@ -74,61 +74,61 @@ public:
     _csma_p_max(0.8), _preambleLength(6), _lora_symbol_time_ms(0.0),
     _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
      _packet{0}, _onReceive(NULL) {};
-    virtual int begin();
-    virtual void end();
+    virtual int begin() = 0;
+    virtual void end() = 0;
 
-    virtual int beginPacket(int implicitHeader = false);
-    virtual int endPacket();
+    virtual int beginPacket(int implicitHeader = false) = 0;
+    virtual int endPacket() = 0;
 
-    virtual int packetRssi();
-    virtual int currentRssi();
-    virtual uint8_t packetRssiRaw();
-    virtual uint8_t currentRssiRaw();
-    virtual uint8_t packetSnrRaw();
-    virtual float packetSnr();
-    virtual long packetFrequencyError();
+    virtual int packetRssi() = 0;
+    virtual int currentRssi() = 0;
+    virtual uint8_t packetRssiRaw() = 0;
+    virtual uint8_t currentRssiRaw() = 0;
+    virtual uint8_t packetSnrRaw() = 0;
+    virtual float packetSnr() = 0;
+    virtual long packetFrequencyError() = 0;
 
     // from Print
-    virtual size_t write(uint8_t byte);
-    virtual size_t write(const uint8_t *buffer, size_t size);
+    virtual size_t write(uint8_t byte) = 0;
+    virtual size_t write(const uint8_t *buffer, size_t size) = 0;
 
     // from Stream
-    virtual int available();
-    virtual int read();
-    virtual int peek();
-    virtual void flush();
+    virtual int available() = 0;
+    virtual int read() = 0;
+    virtual int peek() = 0;
+    virtual void flush() = 0;
 
-    virtual void onReceive(void(*callback)(uint8_t, int));
+    virtual void onReceive(void(*callback)(uint8_t, int)) = 0;
 
-    virtual void receive(int size = 0);
-    virtual void standby();
-    virtual void sleep();
+    virtual void receive(int size = 0) = 0;
+    virtual void standby() = 0;
+    virtual void sleep() = 0;
 
-    virtual bool preInit();
-    virtual uint8_t getTxPower();
-    virtual void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
-    virtual uint32_t getFrequency();
-    virtual void setFrequency(uint32_t frequency);
-    virtual void setSpreadingFactor(int sf);
-    virtual uint8_t getSpreadingFactor();
-    virtual uint32_t getSignalBandwidth();
-    virtual void setSignalBandwidth(uint32_t sbw);
-    virtual void setCodingRate4(int denominator);
-    virtual uint8_t getCodingRate4();
-    virtual void setPreambleLength(long length);
-    virtual uint8_t modemStatus();
-    virtual void enableCrc();
-    virtual void disableCrc();
-    virtual void enableTCXO();
-    virtual void disableTCXO();
+    virtual bool preInit() = 0;
+    virtual uint8_t getTxPower() = 0;
+    virtual void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN) = 0;
+    virtual uint32_t getFrequency() = 0;
+    virtual void setFrequency(uint32_t frequency) = 0;
+    virtual void setSpreadingFactor(int sf) = 0;
+    virtual uint8_t getSpreadingFactor() = 0;
+    virtual uint32_t getSignalBandwidth() = 0;
+    virtual void setSignalBandwidth(uint32_t sbw) = 0;
+    virtual void setCodingRate4(int denominator) = 0;
+    virtual uint8_t getCodingRate4() = 0;
+    virtual void setPreambleLength(long length) = 0;
+    virtual uint8_t modemStatus() = 0;
+    virtual void enableCrc() = 0;
+    virtual void disableCrc() = 0;
+    virtual void enableTCXO() = 0;
+    virtual void disableTCXO() = 0;
 
-    virtual byte random();
+    virtual byte random() = 0;
 
-    virtual void setSPIFrequency(uint32_t frequency);
+    virtual void setSPIFrequency(uint32_t frequency) = 0;
 
-    virtual void updateBitrate();
-    virtual void handleDio0Rise();
-    virtual void clearIRQStatus();
+    virtual void updateBitrate() = 0;
+    virtual void handleDio0Rise() = 0;
+    virtual void clearIRQStatus() = 0;
     uint32_t getBitrate() { return _bitrate; };
     uint8_t getIndex() { return _index; };
     void setRadioLock(bool lock) { _radio_locked = lock; };
@@ -289,8 +289,8 @@ public:
     float getSymbolRate() { return _lora_symbol_rate; };
     long getPreambleLength() { return _preambleLength; };
 protected:
-    virtual void explicitHeaderMode();
-    virtual void implicitHeaderMode();
+    virtual void explicitHeaderMode() = 0;
+    virtual void implicitHeaderMode() = 0;
 
     uint8_t _index;
     bool _radio_locked;
