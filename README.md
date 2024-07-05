@@ -14,15 +14,18 @@ The RNode system is primarily software, which *transforms* different kinds of av
 
 ## Latest Release
 
-The latest release, installable through `rnodeconf`, is version `1.72`. This release brings the following changes:
+The latest release, installable through `rnodeconf`, is version `1.73`. This release brings the following changes:
 
-- Added support for flashing T3S3 boards
-- Added deep sleep support on T3S3
-- Various quality updates for nRF / RAK4631
-- Fixed a bug with antenna switch utilisation on RAK4631
-- Updated console image to include latest packages
+- Added multiple interface support - for supported boards you may now use more than one radio modem at once! Currently the only supported board is the RAK4631 with the right hardware.
+- Fixes for various issues with the SX1280 - data rates are now at expected speeds overall.
+- Added PA calculations for the LoRa1280F27 - this allows for the TX power to be set accurately for this modem.
+- Fixes for OLED compilation errors as a result of commit 055083f.
+- Added switching graphics to the display - shows statistics from up to 2 modems simultaneously.
+- Fix TNC EEPROM settings not being saved - courtesy of @attermann
+- Fix ESP32 linker errors - BSP version is now fixed at 2.0.17, using the older crosstool-ng linker from previous versions (2021r1)
 
-You must have at least version `2.1.3` of `rnodeconf` installed to update the RNode Firmware to version `1.72`. Get it by updating the `rns` package to at least version `0.6.4`.
+
+You must have at least version `2.1.3` of `rnodeconf` installed to update the RNode Firmware to version `1.73`. Get it by updating the `rns` package to at least version `0.6.4`.
 
 ## Supported products and boards
 
