@@ -965,6 +965,9 @@ void set_implicit_length(uint8_t len) {
 }
 
 void setTXPower(RadioInterface* radio, int txp) {
+    // Todo, revamp this function. The current parameters for setTxPower are
+    // suboptimal, as some chips have power amplifiers which means that the max
+    // dBm is not always the same.
     if (model == MODEL_11) {
         if (interfaces[radio->getIndex()] == SX128X) {
             radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
