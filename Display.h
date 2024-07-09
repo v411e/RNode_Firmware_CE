@@ -68,7 +68,7 @@ void busyCallback(const void* p) {
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
   #endif
-#elif BOARD_MODEL == BOARD_RNODE_NG_22
+#elif BOARD_MODEL == BOARD_T3S3
   #if DISPLAY == OLED
   #define DISP_RST 21
   #define DISP_ADDR 0x3C
@@ -200,7 +200,7 @@ bool display_init() {
       digitalWrite(pin_display_en, LOW);
       delay(50);
       digitalWrite(pin_display_en, HIGH);
-    #elif BOARD_MODEL == BOARD_RNODE_NG_22
+    #elif BOARD_MODEL == BOARD_T3S3
       Wire.begin(SDA_OLED, SCL_OLED);
     #elif BOARD_MODEL == BOARD_HELTEC32_V2
       Wire.begin(SDA_OLED, SCL_OLED);

@@ -24,6 +24,7 @@
   #define MCU_ESP32           0x81
   #define MCU_NRF52           0x71
 
+  // Boards
   #define BOARD_RNODE         0x31
   #define BOARD_HMBRW         0x32
   #define BOARD_TBEAM         0x33
@@ -36,10 +37,16 @@
   #define BOARD_HELTEC32_V3   0x3A
   #define BOARD_RNODE_NG_20   0x40
   #define BOARD_RNODE_NG_21   0x41
-  #define BOARD_RNODE_NG_22   0x42
+  #define BOARD_T3S3   0x42
   #define BOARD_GENERIC_NRF52 0x50
   #define BOARD_RAK4631       0x51
 
+  // Variants
+  #define BOARD_T3S3_SX1262 0x01
+  #define BOARD_T3S3_SX1280 0x02
+  #define BOARD_T3S3_SX1280_PA 0x03
+
+  // Displays
   #define OLED 0x01
   #define EINK_BW 0x02
   #define EINK_3C 0x03
@@ -545,7 +552,7 @@
           }
       };
 
-    #elif BOARD_MODEL == BOARD_RNODE_NG_22
+    #elif BOARD_MODEL == BOARD_T3S3
       #define IS_ESP32S3 true
 
       #define HAS_DISPLAY true
@@ -585,7 +592,7 @@
         #endif
       #endif
 
-
+      #if BOARD_VARIANT == BOARD_T3S3_SX1262
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
@@ -595,6 +602,17 @@
               true  // DIO2_AS_RF_SWITCH
           }, 
       };
+      #elif BOARD_VARIANT == BOARD_T3S3_SX1280_PA
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              false, // DEFAULT_SPI
+              false, // HAS_TCXO
+              false  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      #endif
       const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
                   // SX1262
           {
@@ -610,7 +628,6 @@
               -1  // pin_tcxo_enable
           }
       };
-
     #else
       #error An unsupported ESP32 board was selected. Cannot compile RNode firmware.
     #endif

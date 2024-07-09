@@ -87,7 +87,7 @@ void setup() {
 
   Serial.begin(serial_baudrate);
 
-  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_RNODE_NG_22
+  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_T3S3
   // Some boards need to wait until the hardware UART is set up before booting
   // the full firmware. In the case of the RAK4631, the line below will wait
   // until a serial connection is actually established with a master. Thus, it
@@ -1283,7 +1283,7 @@ void process_serial() {
 
 void sleep_now() {
   #if HAS_SLEEP == true
-    #if BOARD_MODEL == BOARD_RNODE_NG_22
+    #if BOARD_MODEL == BOARD_T3S3
       display_intensity = 0;
       update_display(true);
     #endif

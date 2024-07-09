@@ -65,9 +65,9 @@ uint8_t eeprom_read(uint32_t mapped_addr);
   #if BOARD_MODEL == BOARD_HELTEC32_V3
     //https://github.com/espressif/esp-idf/issues/8855
     #include "hal/wdt_hal.h"
-	#elif BOARD_MODEL == BOARD_RNODE_NG_22
+	#elif BOARD_MODEL == BOARD_T3S3
 		#include "hal/wdt_hal.h"
-  #else BOARD_MODEL != BOARD_RNODE_NG_22
+  #else BOARD_MODEL != BOARD_T3S3
 	  #include "soc/rtc_wdt.h"
 	#endif
   #define ISR_VECT IRAM_ATTR
@@ -137,7 +137,7 @@ uint8_t boot_vector = 0x00;
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
 		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
 		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
-	#elif BOARD_MODEL == BOARD_RNODE_NG_22
+	#elif BOARD_MODEL == BOARD_T3S3
 		void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
 		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
@@ -1332,7 +1332,7 @@ bool eeprom_model_valid() {
 	if (model == MODEL_A3 || model == MODEL_A8) {
 	#elif BOARD_MODEL == BOARD_RNODE_NG_21
 	if (model == MODEL_A2 || model == MODEL_A7) {
-	#elif BOARD_MODEL == BOARD_RNODE_NG_22
+	#elif BOARD_MODEL == BOARD_T3S3
 	if (model == MODEL_A1 || model == MODEL_A6) {
 	#elif BOARD_MODEL == BOARD_HMBRW
 	if (model == MODEL_FF || model == MODEL_FE) {

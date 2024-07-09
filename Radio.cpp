@@ -735,7 +735,7 @@ void sx126x::enableTCXO() {
       uint8_t buf[4] = {MODE_TCXO_3_3V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_TBEAM
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
-    #elif BOARD_MODEL == BOARD_RNODE_NG_22
+    #elif BOARD_MODEL == BOARD_T3S3
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #else
       uint8_t buf[4] = {0};
