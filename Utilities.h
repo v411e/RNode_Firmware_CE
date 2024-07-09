@@ -984,6 +984,7 @@ void setTXPower(RadioInterface* radio, int txp) {
     if (model == MODEL_A2) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_A3) radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
     if (model == MODEL_A4) radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
+    if (model == MODEL_A5) radio->setTxPower(txp, PA_OUTPUT_RFO_PIN);
     if (model == MODEL_A6) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_A7) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_A8) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
@@ -1333,7 +1334,7 @@ bool eeprom_model_valid() {
 	#elif BOARD_MODEL == BOARD_RNODE_NG_21
 	if (model == MODEL_A2 || model == MODEL_A7) {
 	#elif BOARD_MODEL == BOARD_T3S3
-	if (model == MODEL_A1 || model == MODEL_A6) {
+	if (model == MODEL_A1 || model == MODEL_A5 || model == MODEL_A6) {
 	#elif BOARD_MODEL == BOARD_HMBRW
 	if (model == MODEL_FF || model == MODEL_FE) {
 	#elif BOARD_MODEL == BOARD_TBEAM

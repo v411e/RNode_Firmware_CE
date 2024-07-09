@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Interfaces.h"
+#include "ROM.h"
 
 #ifndef BOARDS_H
   #define BOARDS_H
@@ -40,11 +41,6 @@
   #define BOARD_T3S3   0x42
   #define BOARD_GENERIC_NRF52 0x50
   #define BOARD_RAK4631       0x51
-
-  // Variants
-  #define BOARD_T3S3_SX1262 0x01
-  #define BOARD_T3S3_SX1280 0x02
-  #define BOARD_T3S3_SX1280_PA 0x03
 
   // Displays
   #define OLED 0x01
@@ -592,7 +588,7 @@
         #endif
       #endif
 
-      #if BOARD_VARIANT == BOARD_T3S3_SX1262
+      #if BOARD_VARIANT == MODEL_A1
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
@@ -602,10 +598,10 @@
               true  // DIO2_AS_RF_SWITCH
           }, 
       };
-      #elif BOARD_VARIANT == BOARD_T3S3_SX1280_PA
+      #elif BOARD_VARIANT == MODEL_A5 // SX1280 with PA 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
-                    // SX1262
+                    // SX1280
           {
               false, // DEFAULT_SPI
               false, // HAS_TCXO

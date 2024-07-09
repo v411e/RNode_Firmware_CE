@@ -29,7 +29,9 @@
     #define PRODUCT_RAK4631 0x10
     #define MODEL_11 0x11
     #define MODEL_12 0x12
+    #define MODEL_13 0x13 // RAK4631 with WisBlock SX1280 module (LIBSYS002)
 	#define MODEL_A1 0xA1
+    #define MODEL_A5 0xA5 // T3S3 SX1280 PA
 	#define MODEL_A6 0xA6
 	#define MODEL_A4 0xA4
 	#define MODEL_A9 0xA9
