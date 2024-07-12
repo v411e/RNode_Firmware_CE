@@ -677,7 +677,7 @@ void kiss_indicate_implicit_length() {
 }
 
 void kiss_indicate_txpower(RadioInterface* radio) {
-    uint8_t txp = radio->getTxPower();
+    int8_t txp = radio->getTxPower();
 	serial_write(FEND);
 	serial_write(CMD_TXPOWER);
 	serial_write(txp);

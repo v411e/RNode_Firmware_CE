@@ -708,7 +708,7 @@ void serialCallback(uint8_t sbyte) {
       if (sbyte == 0xFF) {
         kiss_indicate_txpower(selected_radio);
       } else {
-        int txp = sbyte;
+        int8_t txp = (int8_t)sbyte;
 
         if (op_mode == MODE_HOST) setTXPower(selected_radio, txp);
         kiss_indicate_txpower(selected_radio);
