@@ -27,9 +27,11 @@
 	#define PRODUCT_H32_V2 0xC0
 	#define PRODUCT_H32_V3 0xC1
     #define PRODUCT_RAK4631 0x10
+    #define PRODUCT_FREENODE 0x20
     #define MODEL_11 0x11
     #define MODEL_12 0x12
-	#define MODEL_A1 0xA1
+    #define MODEL_21 0x21 // European band, 868MHz
+    #define MODEL_A1 0xA1
 	#define MODEL_A6 0xA6
 	#define MODEL_A4 0xA4
 	#define MODEL_A9 0xA9
