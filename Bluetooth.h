@@ -281,6 +281,11 @@ bool bt_passkey_callback(uint16_t conn_handle, uint8_t const passkey[6], bool ma
     return false;
 }
 
+void bt_connect_callback(uint16_t conn_handle) {
+  bt_state = BT_STATE_CONNECTED;
+  cable_state = CABLE_STATE_DISCONNECTED;
+}
+
 void bt_disconnect_callback(uint16_t conn_handle, uint8_t reason) {
     bt_state = BT_STATE_ON;
 }
@@ -302,6 +307,7 @@ bool bt_setup_hw() {
       Bluefruit.setTxPower(8);    // Check bluefruit.h for supported values
       Bluefruit.Security.setIOCaps(true, true, false);
       Bluefruit.Security.setPairPasskeyCallback(bt_passkey_callback);
+      Bluefruit.Periph.setConnectCallback(bt_connect_callback);
       Bluefruit.Periph.setDisconnectCallback(bt_disconnect_callback);
       Bluefruit.Security.setPairCompleteCallback(bt_pairing_complete);
       const ble_gap_addr_t gap_addr = Bluefruit.getAddr();
