@@ -629,7 +629,7 @@
     #endif
   
   #elif MCU_VARIANT == MCU_NRF52
-    #if BOARD_MODEL == BOARD_RAK4631
+    #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_FREENODE
       #define HAS_EEPROM false
       #define HAS_DISPLAY true
       #define DISPLAY EINK_BW
@@ -647,6 +647,7 @@
       #define BLE_MANUFACTURER "RAK Wireless"
       #define BLE_MODEL "RAK4640"
 
+      #if BOARD_VARIANT == MODEL_11 || BOARD_VARIANT == MODEL_12
       #define INTERFACE_COUNT 1
 
       // first interface in list is the primary
@@ -674,6 +675,56 @@
               -1  // pin_tcxo_enable
           }
       };
+      #elif BOARD_VARIANT == MODEL_13 || BOARD_VARIANT == MODEL_14 || BOARD_VARIANT == MODEL_21
+      #define INTERFACE_COUNT 2
+
+      #define CONFIG_QUEUE_1_SIZE 20000
+
+      // first interface in list is the primary
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX126X, SX128X};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              false, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }, 
+                    // SX1280
+          {
+              true, // DEFAULT_SPI
+              false,// HAS_TCXO
+              false // DIO2_AS_RF_SWITCH
+          } 
+      };
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+              42, // pin_ss
+              43, // pin_sclk
+              44, // pin_mosi
+              45, // pin_miso
+              46, // pin_busy
+              47, // pin_dio
+              38, // pin_reset
+              -1, // pin_txen
+              37, // pin_rxen
+              -1  // pin_tcxo_enable
+          },
+                  // SX1280
+          {
+              24, // pin_ss
+               3, // pin_sclk
+              30, // pin_mosi
+              29, // pin_miso
+              25, // pin_busy
+              15, // pin_dio
+              16, // pin_reset
+              20, // pin_txen
+              19, // pin_rxen
+              -1  // pin_tcxo_enable
+          } 
+      };
+      #endif
 
         #define INTERFACE_SPI
         // Required because on RAK4631, non-default SPI pins must be initialised when class is declared.
