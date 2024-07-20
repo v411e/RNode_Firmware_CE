@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Interfaces.h"
+#include "ROM.h"
 
 #ifndef BOARDS_H
   #define BOARDS_H
@@ -24,6 +25,7 @@
   #define MCU_ESP32           0x81
   #define MCU_NRF52           0x71
 
+  // Boards
   #define BOARD_RNODE         0x31
   #define BOARD_HMBRW         0x32
   #define BOARD_TBEAM         0x33
@@ -36,10 +38,11 @@
   #define BOARD_HELTEC32_V3   0x3A
   #define BOARD_RNODE_NG_20   0x40
   #define BOARD_RNODE_NG_21   0x41
-  #define BOARD_RNODE_NG_22   0x42
+  #define BOARD_T3S3   0x42
   #define BOARD_GENERIC_NRF52 0x50
   #define BOARD_RAK4631       0x51
 
+  // Displays
   #define OLED 0x01
   #define EINK_BW 0x02
   #define EINK_3C 0x03
@@ -545,7 +548,7 @@
           }
       };
 
-    #elif BOARD_MODEL == BOARD_RNODE_NG_22
+    #elif BOARD_MODEL == BOARD_T3S3
       #define IS_ESP32S3 true
 
       #define HAS_DISPLAY true
@@ -585,7 +588,7 @@
         #endif
       #endif
 
-
+      #if BOARD_VARIANT == MODEL_A1
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
@@ -595,6 +598,17 @@
               true  // DIO2_AS_RF_SWITCH
           }, 
       };
+      #elif BOARD_VARIANT == MODEL_A5 // SX1280 with PA 
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1280
+          {
+              false, // DEFAULT_SPI
+              false, // HAS_TCXO
+              false  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      #endif
       const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
                   // SX1262
           {
@@ -610,7 +624,6 @@
               -1  // pin_tcxo_enable
           }
       };
-
     #else
       #error An unsupported ESP32 board was selected. Cannot compile RNode firmware.
     #endif
@@ -689,6 +702,7 @@
 
   #endif
   #ifndef INTERFACE_SPI
+    // INTERFACE_SPI is only required on NRF52 platforms, as the SPI pins are set in the class constructor and not by a setter method.
     // Even if custom SPI interfaces are not needed, the array must exist to prevent compilation errors.
     #define INTERFACE_SPI
     const SPIClass interface_spi[1];
