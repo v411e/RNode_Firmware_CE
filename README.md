@@ -33,6 +33,7 @@ You must have at least version `2.1.3` of `rnodeconf` installed to update the RN
 | Name | Manufacturer | Link | Transceiver | MCU | Description |
 | :---: | :---: | :---: | :---: | :---: | :---: |
 | Handheld v2.x RNodes | [Mark Qvist](https://unsigned.io) | [Buy here](https://unsigned.io/shop/product/handheld-rnode) | SX1276 | ESP32 |
+| freeNode | [Liberated Embedded Systems](https://liberatedsystems.co.uk) | [Buy here](https://store.liberatedsystems.co.uk/product/freenode/) | SX1262 & SX1280 | nRF52 | Supports utilisation of both modems at once |
 
 ### Homebrew devices
 | Board name | Link | Transceiver | MCU | Description | 
