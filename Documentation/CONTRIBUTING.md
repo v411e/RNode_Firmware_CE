@@ -1,7 +1,8 @@
 # Board support
-If you wish to add support for a specific board to the project, all you have to do (if it's ESP32 or nRF52), is write an additional entry for `Boards.h`.
+If you wish to add support for a specific board to the project, all you have to do (if it's ESP32 or nRF52), is write an additional entry for `Boards.h` and `Utilities.h` and the `Makefile` .
 
-This entry should include, at a minimum, the following:
+### Boards.h
+This entry in `Boards.h` should include, at a minimum, the following:
 * whether the device has bluetooth / BLE
 * whether the device has a PMU
 * whether the device has an EEPROM (false in all cases for nRF52, true for ESP32)
@@ -10,7 +11,47 @@ This entry should include, at a minimum, the following:
 * whether the modem has a busy pin
 * RX and TX leds (preferably LEDs of different colours)
 
-# Check this area...
+here is an example :
+the new entry to add whoses number should not be used aldready
+```
+#define BOARD_GENERIC_ESP32_C3 0x3B
+```
+and the board definition
+```
+#elif BOARD_MODEL == BOARD_GENERIC_ESP32_C3
+      #define HAS_BLUETOOTH false
+      #define HAS_CONSOLE true
+      #define HAS_EEPROM true
+      #define INTERFACE_COUNT 1
+      const int pin_led_rx = 9;
+      const int pin_led_tx = 8;
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX127X
+          {
+              true, // DEFAULT_SPI
+              false, // HAS_TCXO
+              false  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX127X
+          {
+              7, // pin_ss
+              4, // pin_sclk
+              6, // pin_mosi
+              5, // pin_miso
+              -1, // pin_busy
+              2, // pin_dio
+              3, // pin_reset
+              -1, // pin_txen
+              -1, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
+
+```
+
 see https://github.com/espressif/arduino-esp32/blob/master/cores/esp32/esp32-hal-spi.h#L39
 Effectively, there are multiple SPI buses we can map to pins on these
 devices (including the hardware SPI bus)
@@ -96,6 +137,56 @@ An example of an entry using the SX1280 modem can be seen below:
   const int pin_tcxo_enable = -1;
   const int pin_led_rx = 5;
   const int pin_led_tx = 6;
+```
+
+
+### Utilities.h
+you should add something like this to drive the led :
+
+```
+#elif BOARD_MODEL == BOARD_GENERIC_ESP32_C3
+		void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
+		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
+		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
+		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
+```
+
+### Makefile
+
+one entry to build the firmware
+```
+firmware-genericesp32c3:
+	arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x3B\""
+```
+pay attention the the DBOARD_MODEL= value as you must choose an unsigned one for your board.
+
+one entry to upload the firmware to the board
+
+```
+upload-genericesp32c3:
+	arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:esp32c3
+	@sleep 1
+	rnodeconf /dev/ttyACM0 --firmware-hash $$(./partition_hashes ./build/esp32.esp32.esp32c3/RNode_Firmware_CE.ino.bin)
+	@sleep 3
+	python ./Release/esptool/esptool.py --chip esp32c3 --port /dev/ttyACM0 --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0x210000 ./Release/console_image.bin
+```
+
+and finally one entry to make a realease for the firmware 
+
+```
+release-genericesp32c3:
+	arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x3B\""
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_esp32_generic-c3.boot_app0
+	cp build/esp32.esp32.esp32c3/RNode_Firmware_CE.ino.bin build/rnode_firmware_esp32c3_generic.bin
+	cp build/esp32.esp32.esp32c3/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_esp32c3_generic.bootloader
+	cp build/esp32.esp32.esp32c3/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_esp32c3_generic.partitions
+	zip --junk-paths ./Release/rnode_firmware_esp32c3_generic.zip ./Release/esptool/esptool.py ./Release/console_image.bin build/rnode_firmware_esp32c3_generic.boot_app0 build/rnode_firmware_esp32c3_generic.bin build/rnode_firmware_esp32c3_generic.bootloader build/rnode_firmware_esp32c3_generic.partitions
+	rm -r build
+```
+dont forget to add this entry to the `release-all` action. 
+
+```
+release-all: console-site spiffs-image release-tbeam release-tbeam_sx1262 release-lora32_v10 release-lora32_v20 release-lora32_v21 release-lora32_v10_extled release-lora32_v20_extled release-lora32_v21_extled release-lora32_v21_tcxo release-featheresp32 release-genericesp32 release-genericesp32c3 release-heltec32_v2 release-heltec32_v3 release-heltec32_v2_extled release-rnode_ng_20 release-rnode_ng_21 release-t3s3 release-hashe
 ```
 
 Please submit this, and any other support in different areas of the project your board may require, as a PR for my consideration.
