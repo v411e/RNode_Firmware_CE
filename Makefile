@@ -21,12 +21,7 @@ clean:
 	-rm -r ./build
 	-rm ./Release/rnode_firmware*
 
-prep: prep-avr prep-esp32 prep-samd
-
-prep-avr:
-	arduino-cli core update-index --config-file arduino-cli.yaml
-	arduino-cli core install arduino:avr --config-file arduino-cli.yaml
-	arduino-cli core install unsignedio:avr --config-file arduino-cli.yaml
+prep: prep-esp32 prep-samd
 
 prep-esp32:
 	arduino-cli core update-index --config-file arduino-cli.yaml
@@ -58,12 +53,6 @@ spiffs-image:
 upload-spiffs:
 	@echo Deploying SPIFFS image...
 	python ./Release/esptool/esptool.py --chip esp32 --port /dev/ttyACM0 --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0x210000 ./Release/console_image.bin
-
-firmware:
-	arduino-cli compile --fqbn unsignedio:avr:rnode
-
-firmware-mega2560:
-	arduino-cli compile --fqbn arduino:avr:mega
 
 firmware-tbeam:
 	arduino-cli compile --fqbn esp32:esp32:t-beam -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x33\""
@@ -124,12 +113,6 @@ firmware-rak4631_sx1280:
 
 firmware-freenode:
 	arduino-cli compile --fqbn rakwireless:nrf52:WisCoreRAK4631Board -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x51\" \"-DBOARD_VARIANT=0x21\""
-
-upload:
-	arduino-cli upload -p /dev/ttyUSB0 --fqbn unsignedio:avr:rnode
-
-upload-mega2560:
-	arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:mega
 
 upload-tbeam:
 	arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:t-beam
@@ -370,11 +353,6 @@ release-genericesp32:
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_esp32_generic.bootloader
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_esp32_generic.partitions
 	zip --junk-paths ./Release/rnode_firmware_esp32_generic.zip ./Release/esptool/esptool.py ./Release/console_image.bin build/rnode_firmware_esp32_generic.boot_app0 build/rnode_firmware_esp32_generic.bin build/rnode_firmware_esp32_generic.bootloader build/rnode_firmware_esp32_generic.partitions
-	rm -r build
-
-release-mega2560:
-	arduino-cli compile --fqbn arduino:avr:mega -e --build-property "compiler.cpp.extra_flags=\"-DMODEM=0x01\""
-	cp build/arduino.avr.mega/RNode_Firmware_CE.ino.hex Release/rnode_firmware_m2560.hex
 	rm -r build
 
 release-rak4631:
