@@ -4,7 +4,7 @@
 // Modifications and additions copyright 2024 by Mark Qvist & Jacob Eva
 // Obviously still under the MIT license.
 
-#include "Radio.h"
+#include "Radio.hpp"
 
 #if PLATFORM == PLATFORM_ESP32 
   #if defined(ESP32) and !defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -106,7 +106,7 @@ void ISR_VECT onDio0Rise() {
     }
 }
 
-sx126x::sx126x(uint8_t index, SPIClass spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
+sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0), _spiModem(spi), _ss(ss),
     _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
@@ -130,12 +130,12 @@ bool sx126x::preInit() {
   // todo: check if this change causes issues on any platforms
   #if MCU_VARIANT == MCU_ESP32
   if (_sclk != -1 && _miso != -1 && _mosi != -1 && _ss != -1) {
-    _spiModem.begin(_sclk, _miso, _mosi, _ss);
+    _spiModem->begin(_sclk, _miso, _mosi, _ss);
   } else {
-    _spiModem.begin();
+    _spiModem->begin();
   }
   #else
-    _spiModem.begin();
+    _spiModem->begin();
   #endif
 
   // check version (retry for up to 2 seconds)
@@ -177,15 +177,15 @@ uint8_t ISR_VECT sx126x::singleTransfer(uint8_t opcode, uint16_t address, uint8_
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer((address & 0xFF00) >> 8);
-    _spiModem.transfer(address & 0x00FF);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer((address & 0xFF00) >> 8);
+    _spiModem->transfer(address & 0x00FF);
     if (opcode == OP_READ_REGISTER_6X) {
-        _spiModem.transfer(0x00);
+        _spiModem->transfer(0x00);
     }
-    response = _spiModem.transfer(value);
-    _spiModem.endTransaction();
+    response = _spiModem->transfer(value);
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 
@@ -222,15 +222,15 @@ void sx126x::executeOpcode(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -241,16 +241,16 @@ void sx126x::executeOpcodeRead(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -261,17 +261,17 @@ void sx126x::writeBuffer(const uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_WRITE_6X);
-    _spiModem.transfer(_fifo_tx_addr_ptr);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_WRITE_6X);
+    _spiModem->transfer(_fifo_tx_addr_ptr);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
         _fifo_tx_addr_ptr++;
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -282,17 +282,17 @@ void sx126x::readBuffer(uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_READ_6X);
-    _spiModem.transfer(_fifo_rx_addr_ptr);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_READ_6X);
+    _spiModem->transfer(_fifo_rx_addr_ptr);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -451,7 +451,7 @@ void sx126x::end()
   sleep();
 
   // stop SPI
-  _spiModem.end();
+  _spiModem->end();
 
   _bitrate = 0;
 
@@ -676,7 +676,7 @@ void sx126x::onReceive(void(*callback)(uint8_t, int))
 
     executeOpcode(OP_SET_IRQ_FLAGS_6X, buf, 8);
 #ifdef SPI_HAS_NOTUSINGINTERRUPT
-    _spiModem.usingInterrupt(digitalPinToInterrupt(_dio0));
+    _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
 #endif
     // make function available
     extern void onDio0Rise();
@@ -685,7 +685,7 @@ void sx126x::onReceive(void(*callback)(uint8_t, int))
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
 #ifdef SPI_HAS_NOTUSINGINTERRUPT
-    _spiModem.notUsingInterrupt(digitalPinToInterrupt(_dio0));
+    _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
 #endif
   }
 }
@@ -1081,7 +1081,7 @@ void sx126x::clearIRQStatus() {
 
 #define SYNC_WORD_7X                  0x12
 
-sx127x::sx127x(uint8_t index, SPIClass spi, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy) :
+sx127x::sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy) :
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
@@ -1116,12 +1116,12 @@ bool sx127x::preInit() {
   // todo: check if this change causes issues on any platforms
   #if MCU_VARIANT == MCU_ESP32
   if (_sclk != -1 && _miso != -1 && _mosi != -1 && _ss != -1) {
-    _spiModem.begin(_sclk, _miso, _mosi, _ss);
+    _spiModem->begin(_sclk, _miso, _mosi, _ss);
   } else {
-    _spiModem.begin();
+    _spiModem->begin();
   }
   #else
-    _spiModem.begin();
+    _spiModem->begin();
   #endif
 
   // Check modem version
@@ -1143,10 +1143,10 @@ uint8_t ISR_VECT sx127x::singleTransfer(uint8_t address, uint8_t value) {
   uint8_t response;
 
   digitalWrite(_ss, LOW);
-  _spiModem.beginTransaction(_spiSettings);
-  _spiModem.transfer(address);
-  response = _spiModem.transfer(value);
-  _spiModem.endTransaction();
+  _spiModem->beginTransaction(_spiSettings);
+  _spiModem->transfer(address);
+  response = _spiModem->transfer(value);
+  _spiModem->endTransaction();
   digitalWrite(_ss, HIGH);
 
   return response;
@@ -1193,7 +1193,7 @@ int sx127x::begin() {
 
 void sx127x::end() {
   sleep();
-  _spiModem.end();
+  _spiModem->end();
   _bitrate = 0;
   _radio_online = false;
   _preinit_done = false;
@@ -1331,7 +1331,7 @@ void sx127x::onReceive(void(*callback)(uint8_t, int)) {
     writeRegister(REG_DIO_MAPPING_1_7X, 0x00);
     
     #ifdef SPI_HAS_NOTUSINGINTERRUPT
-      _spiModem.usingInterrupt(digitalPinToInterrupt(_dio0));
+      _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
     #endif
     
     // make function available
@@ -1343,7 +1343,7 @@ void sx127x::onReceive(void(*callback)(uint8_t, int)) {
     detachInterrupt(digitalPinToInterrupt(_dio0));
     
     #ifdef SPI_HAS_NOTUSINGINTERRUPT
-      _spiModem.notUsingInterrupt(digitalPinToInterrupt(_dio0));
+      _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
     #endif
   }
 }
@@ -1599,7 +1599,7 @@ void sx127x::clearIRQStatus() {
 #define FREQ_DIV_8X (double)pow(2.0, 18.0)
 #define FREQ_STEP_8X (double)(XTAL_FREQ_8X / FREQ_DIV_8X)
 
-sx128x::sx128x(uint8_t index, SPIClass spi, bool tcxo, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen, int txen) :
+sx128x::sx128x(uint8_t index, SPIClass* spi, bool tcxo, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen, int txen) :
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
@@ -1626,12 +1626,12 @@ bool sx128x::preInit() {
   // todo: check if this change causes issues on any platforms
   #if MCU_VARIANT == MCU_ESP32
   if (_sclk != -1 && _miso != -1 && _mosi != -1 && _ss != -1) {
-    _spiModem.begin(_sclk, _miso, _mosi, _ss);
+    _spiModem->begin(_sclk, _miso, _mosi, _ss);
   } else {
-    _spiModem.begin();
+    _spiModem->begin();
   }
   #else
-    _spiModem.begin();
+    _spiModem->begin();
   #endif
 
   // check version (retry for up to 2 seconds)
@@ -1676,15 +1676,15 @@ uint8_t ISR_VECT sx128x::singleTransfer(uint8_t opcode, uint16_t address, uint8_
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer((address & 0xFF00) >> 8);
-    _spiModem.transfer(address & 0x00FF);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer((address & 0xFF00) >> 8);
+    _spiModem->transfer(address & 0x00FF);
     if (opcode == OP_READ_REGISTER_8X) {
-        _spiModem.transfer(0x00);
+        _spiModem->transfer(0x00);
     }
-    response = _spiModem.transfer(value);
-    _spiModem.endTransaction();
+    response = _spiModem->transfer(value);
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 
@@ -1734,15 +1734,15 @@ void sx128x::executeOpcode(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1753,16 +1753,16 @@ void sx128x::executeOpcodeRead(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1773,17 +1773,17 @@ void sx128x::writeBuffer(const uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_WRITE_8X);
-    _spiModem.transfer(_fifo_tx_addr_ptr);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_WRITE_8X);
+    _spiModem->transfer(_fifo_tx_addr_ptr);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
         _fifo_tx_addr_ptr++;
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1794,17 +1794,17 @@ void sx128x::readBuffer(uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_READ_8X);
-    _spiModem.transfer(_fifo_rx_addr_ptr);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_READ_8X);
+    _spiModem->transfer(_fifo_rx_addr_ptr);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1921,7 +1921,7 @@ void sx128x::end()
   sleep();
 
   // stop SPI
-  _spiModem.end();
+  _spiModem->end();
 
   _bitrate = 0;
 
@@ -2130,7 +2130,7 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
 
       executeOpcode(OP_SET_IRQ_FLAGS_8X, buf, 8);
 //#ifdef SPI_HAS_NOTUSINGINTERRUPT
-//    _spiModem.usingInterrupt(digitalPinToInterrupt(_dio0));
+//    _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
 //#endif
 
     // make function available
@@ -2140,7 +2140,7 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
 //#ifdef SPI_HAS_NOTUSINGINTERRUPT
-//    _spiModem.notUsingInterrupt(digitalPinToInterrupt(_dio0));
+//    _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
 //#endif
   }
 }

@@ -726,17 +726,6 @@
       };
       #endif
 
-        #define INTERFACE_SPI
-        // Required because on RAK4631, non-default SPI pins must be initialised when class is declared.
-      const SPIClass interface_spi[1] = {
-            // SX1262
-            SPIClass(
-                NRF_SPIM2, 
-                interface_pins[0][3], 
-                interface_pins[0][1], 
-                interface_pins[0][2]
-               )
-      };
 
       const int pin_disp_cs = SS;
       const int pin_disp_dc = WB_IO1;
@@ -751,11 +740,5 @@
       #error An unsupported nRF board was selected. Cannot compile RNode firmware.
     #endif
 
-  #endif
-  #ifndef INTERFACE_SPI
-    // INTERFACE_SPI is only required on NRF52 platforms, as the SPI pins are set in the class constructor and not by a setter method.
-    // Even if custom SPI interfaces are not needed, the array must exist to prevent compilation errors.
-    #define INTERFACE_SPI
-    const SPIClass interface_spi[1];
   #endif
 #endif
