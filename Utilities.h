@@ -1100,7 +1100,7 @@ uint8_t getInterfaceCommandByte(uint8_t index) {
     }
 }
 
-uint32_t getQueueSize(uint8_t index) {
+uint16_t getQueueSize(uint8_t index) {
     switch (index) {
         case 0:
             return CONFIG_QUEUE_0_SIZE;

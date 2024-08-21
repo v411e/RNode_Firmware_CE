@@ -137,7 +137,7 @@ void setup() {
   for (int i = 0; i < INTERFACE_COUNT; i++) {
       fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH);
       fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH);
-      packet_queue[i] = (uint8_t*)malloc(getQueueSize(i));
+      packet_queue[i] = (uint8_t*)malloc(getQueueSize(i)+1);
   }
 
   // Create and configure interface objects
@@ -585,9 +585,9 @@ void serialCallback(uint8_t sbyte) {
 
     if (getInterfaceIndex(command) < INTERFACE_COUNT) {
             uint8_t index = getInterfaceIndex(command);
-        if (!fifo16_isfull(&packet_starts[index]) && queued_bytes[index] < (getQueueSize(index))) {
+        if (!fifo16_isfull(&packet_starts[index]) && (queued_bytes[index] < (getQueueSize(index)))) {
             uint16_t s = current_packet_start[index];
-            int16_t e = queue_cursor[index]-1; if (e == -1) e = (getQueueSize(index))-1;
+            uint16_t e = queue_cursor[index]-1; if (e == -1) e = (getQueueSize(index))-1;
             uint16_t l;
 
             if (s != e) {
