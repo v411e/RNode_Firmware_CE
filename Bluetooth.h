@@ -259,9 +259,34 @@ void bt_disable_pairing() {
 
 void bt_pairing_complete(uint16_t conn_handle, uint8_t auth_status) {
     if (auth_status == BLE_GAP_SEC_STATUS_SUCCESS) {
-      bt_state = BT_STATE_CONNECTED;
-      cable_state = CABLE_STATE_DISCONNECTED;
-      bt_disable_pairing();
+      BLEConnection* connection = Bluefruit.Connection(conn_handle);
+
+      ble_gap_conn_sec_mode_t security = connection->getSecureMode();
+
+      // On the NRF52 it is not possible with the Arduino library to reject
+      // requests from devices with no IO capabilities, which would allow
+      // bypassing pin entry through pairing using the "just works" mode.
+      // Therefore, we must check the security level of the connection after
+      // pairing to ensure "just works" has not been used. If it has, we need
+      // to disconnect, unpair and delete any bonding information immediately.
+      // Settings on the SerialBT service should prevent unauthorised access to
+      // the serial port anyway, but this is still wise to do regardless.
+      //
+      // Note: It may be nice to have this done in the BLESecurity class in the
+      // future, but as it stands right now I'd have to fork the BSP to do
+      // that, which I don't fancy doing. Impact on security is likely minimal.
+      // Requires investigation.
+
+      if (security.sm == 1 && security.lv >= 3) {
+          bt_state = BT_STATE_CONNECTED;
+          cable_state = CABLE_STATE_DISCONNECTED;
+          bt_disable_pairing();
+      } else {
+          if (connection->bonded()) {
+              connection->removeBondKey();
+          }
+          connection->disconnect();
+      }
     } else {
       bt_ssp_pin = 0;
     }
@@ -273,21 +298,21 @@ bool bt_passkey_callback(uint16_t conn_handle, uint8_t const passkey[6], bool ma
         bt_ssp_pin += ((int)passkey[i] - 48) * pow(10, 5-i);
     }
     kiss_indicate_btpin();
-    if (match_request) {
-        if (bt_allow_pairing) {
-            return true;
-        }
+    if (bt_allow_pairing) {
+        return true;
     }
     return false;
 }
 
 void bt_connect_callback(uint16_t conn_handle) {
-  bt_state = BT_STATE_CONNECTED;
-  cable_state = CABLE_STATE_DISCONNECTED;
+    bt_state = BT_STATE_CONNECTED;
+    cable_state = CABLE_STATE_DISCONNECTED;
 }
 
 void bt_disconnect_callback(uint16_t conn_handle, uint8_t reason) {
-    bt_state = BT_STATE_ON;
+    if (reason != BLE_GAP_SEC_STATUS_SUCCESS) {
+        bt_state = BT_STATE_ON;
+    }
 }
 
 bool bt_setup_hw() {
@@ -305,7 +330,14 @@ bool bt_setup_hw() {
     Bluefruit.autoConnLed(false);
     if (Bluefruit.begin()) {
       Bluefruit.setTxPower(8);    // Check bluefruit.h for supported values
-      Bluefruit.Security.setIOCaps(true, true, false);
+      Bluefruit.Security.setIOCaps(true, false, false); // display, yes; yes / no, no; keyboard, no
+      // This device is indeed capable of yes / no through the pairing mode
+      // being set, but I have chosen to set it thus to force the input of the
+      // pin on the device initiating the pairing. This prevents it from being
+      // paired with automatically by a hypothetical malicious device nearby
+      // without physical access to the RNode.
+
+      Bluefruit.Security.setMITM(true);
       Bluefruit.Security.setPairPasskeyCallback(bt_passkey_callback);
       Bluefruit.Periph.setConnectCallback(bt_connect_callback);
       Bluefruit.Periph.setDisconnectCallback(bt_disconnect_callback);
