@@ -451,6 +451,7 @@ bool startRadio(RadioInterface* radio) {
 void stopRadio(RadioInterface* radio) {
   radio->end();
   sort_interfaces();
+  kiss_indicate_radiostate(radio);
 }
 
 void update_radio_lock(RadioInterface* radio) {
@@ -780,10 +781,8 @@ void serialCallback(uint8_t sbyte) {
         kiss_indicate_radiostate(selected_radio);
       } else if (sbyte == 0x00) {
         stopRadio(selected_radio);
-        kiss_indicate_radiostate(selected_radio);
       } else if (sbyte == 0x01) {
         startRadio(selected_radio);
-        kiss_indicate_radiostate(selected_radio);
       }
       interface = 0;
     } else if (command == CMD_ST_ALOCK) {
