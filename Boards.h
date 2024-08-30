@@ -639,7 +639,7 @@
       #define HAS_PMU true
       #define HAS_NP false
       #define HAS_SD false
-      #define CONFIG_UART_BUFFER_SIZE 6144
+      #define CONFIG_UART_BUFFER_SIZE 40000
       #define CONFIG_QUEUE_0_SIZE 6144
       #define CONFIG_QUEUE_MAX_LENGTH 200
       #define EEPROM_SIZE 296
@@ -678,7 +678,7 @@
       #elif BOARD_VARIANT == MODEL_13 || BOARD_VARIANT == MODEL_14 || BOARD_VARIANT == MODEL_21
       #define INTERFACE_COUNT 2
 
-      #define CONFIG_QUEUE_1_SIZE 20000
+      #define CONFIG_QUEUE_1_SIZE 40000
 
       // first interface in list is the primary
       const uint8_t interfaces[INTERFACE_COUNT] = {SX126X, SX128X};
