@@ -108,7 +108,7 @@ Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
 float disp_target_fps = 7;
 #define SCREENSAVER_TIME 500 // ms
 uint32_t last_screensaver = 0;
-uint32_t screensaver_interval = 600000; // 10 minutes in ms
+#define SCREENSAVER_INTERVAL 600000 // 10 minutes in ms
 bool screensaver_enabled = false;
 #endif
 #endif
@@ -1124,13 +1124,13 @@ void update_display(bool blank = false) {
       uint32_t current = millis();
       // Invert display to protect against OLED screen burn in
       if (screensaver_enabled) {
-          if (current-last_screensaver >= screensaver_interval+SCREENSAVER_TIME) {
+          if (current-last_screensaver >= SCREENSAVER_INTERVAL+SCREENSAVER_TIME) {
               display.invertDisplay(0);
               last_screensaver = current;
               screensaver_enabled = false;
           }
       }
-      else if (current-last_screensaver >= screensaver_interval) {
+      else if (current-last_screensaver >= SCREENSAVER_INTERVAL) {
         display.invertDisplay(1);
         screensaver_enabled = true;
       }
