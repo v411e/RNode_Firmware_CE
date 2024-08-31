@@ -339,7 +339,7 @@ bool bt_setup_hw() {
 
       Bluefruit.Security.setMITM(true);
       Bluefruit.Security.setPairPasskeyCallback(bt_passkey_callback);
-      Bluefruit.Periph.setConnectCallback(bt_connect_callback);
+      Bluefruit.Security.setSecuredCallback(bt_connect_callback);
       Bluefruit.Periph.setDisconnectCallback(bt_disconnect_callback);
       Bluefruit.Security.setPairCompleteCallback(bt_pairing_complete);
       const ble_gap_addr_t gap_addr = Bluefruit.getAddr();
