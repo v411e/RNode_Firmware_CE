@@ -66,9 +66,6 @@ char sbuf[128];
 
 bool packet_ready = false;
 
-volatile bool process_packet = false;
-volatile uint8_t packet_interface = 0;
-
 uint8_t *packet_queue[INTERFACE_COUNT];
 
 void setup() {
@@ -139,6 +136,10 @@ void setup() {
       fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH);
       packet_queue[i] = (uint8_t*)malloc(getQueueSize(i)+1);
   }
+
+  memset(packet_rdy_interfaces_buf, 0, sizeof(packet_rdy_interfaces_buf));
+
+  fifo_init(&packet_rdy_interfaces, packet_rdy_interfaces_buf, MAX_INTERFACES);
 
   // Create and configure interface objects
   for (uint8_t i = 0; i < INTERFACE_COUNT; i++) {
@@ -330,7 +331,7 @@ inline void getPacketData(RadioInterface* radio, uint16_t len) {
   }
 }
 
-void ISR_VECT receive_callback(uint8_t index, int packet_size) {
+void receive_callback(uint8_t index, int packet_size) {
   if (!promisc) {
     selected_radio = interface_obj[index];
 
@@ -398,6 +399,24 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
 
     getPacketData(selected_radio, packet_size);
     packet_ready = true;
+  }
+
+  if (packet_ready) {
+        #if MCU_VARIANT == MCU_ESP32
+        portENTER_CRITICAL(&update_lock);
+        #elif MCU_VARIANT == MCU_NRF52
+        portENTER_CRITICAL();
+        #endif
+        last_rssi = selected_radio->packetRssi();
+        last_snr_raw = selected_radio->packetSnrRaw();
+        #if MCU_VARIANT == MCU_ESP32
+        portEXIT_CRITICAL(&update_lock);
+        #elif MCU_VARIANT == MCU_NRF52
+        portEXIT_CRITICAL();
+        #endif
+        kiss_indicate_stat_rssi();
+        kiss_indicate_stat_snr();
+        kiss_write_packet(index);
   }
   last_rx = millis();
 }
@@ -1170,25 +1189,6 @@ void loop() {
 
   // If at least one radio is online then we can continue
   if (ready) {
-      if (packet_ready) {
-        selected_radio = interface_obj[packet_interface];
-        #if MCU_VARIANT == MCU_ESP32
-        portENTER_CRITICAL(&update_lock);
-        #elif MCU_VARIANT == MCU_NRF52
-        portENTER_CRITICAL();
-        #endif
-        last_rssi = selected_radio->packetRssi();
-        last_snr_raw = selected_radio->packetSnrRaw();
-        #if MCU_VARIANT == MCU_ESP32
-        portEXIT_CRITICAL(&update_lock);
-        #elif MCU_VARIANT == MCU_NRF52
-        portEXIT_CRITICAL();
-        #endif
-        kiss_indicate_stat_rssi();
-        kiss_indicate_stat_snr();
-        kiss_write_packet(packet_interface);
-      }
-        
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         selected_radio = interface_obj_sorted[i];
 
@@ -1321,23 +1321,13 @@ void poll_buffers() {
 }
 
 void packet_poll() {
-    #if MCU_VARIANT == MCU_ESP32
-    portENTER_CRITICAL(&update_lock);
-    #elif MCU_VARIANT == MCU_NRF52
-    portENTER_CRITICAL();
-    #endif
     // If we have received a packet on an interface which needs to be processed
-    if (process_packet) {
-        selected_radio = interface_obj[packet_interface];
+    while (!fifo_isempty(&packet_rdy_interfaces)) {
+        uint8_t packet_int = fifo_pop(&packet_rdy_interfaces);
+        selected_radio = interface_obj[packet_int];
         selected_radio->clearIRQStatus();
         selected_radio->handleDio0Rise();
-        process_packet = false;
     }
-    #if MCU_VARIANT == MCU_ESP32
-    portEXIT_CRITICAL(&update_lock);
-    #elif MCU_VARIANT == MCU_NRF52
-    portEXIT_CRITICAL();
-    #endif
 }
 
 volatile bool serial_polling = false;

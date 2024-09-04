@@ -11,6 +11,7 @@
 #include <SPI.h>
 #include "Interfaces.h"
 #include "Boards.h"
+#include "src/misc/FIFOBuffer.h"
 
 #define MAX_PKT_LENGTH                255
 

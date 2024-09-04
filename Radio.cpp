@@ -88,8 +88,7 @@
 #define FREQ_DIV_6X (double)pow(2.0, 25.0)
 #define FREQ_STEP_6X (double)(XTAL_FREQ_6X / FREQ_DIV_6X)
 
-extern bool process_packet;
-extern uint8_t packet_interface;
+extern FIFOBuffer packet_rdy_interfaces;
 extern RadioInterface* interface_obj[];
 
 // ISRs cannot provide parameters to the functions they call. Since we have
@@ -99,9 +98,7 @@ extern RadioInterface* interface_obj[];
 void ISR_VECT onDio0Rise() {
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         if (digitalRead(interface_pins[i][5]) == HIGH) {
-            process_packet = true;
-            packet_interface = i;
-            break;
+            fifo_push(&packet_rdy_interfaces, i);
         }
     }
 }
