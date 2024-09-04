@@ -1201,7 +1201,7 @@ void loop() {
         // loop, it still needs to be the first to transmit, so check if this
         // is the case.
         for (int j = 0; j < INTERFACE_COUNT; j++) {
-            if (!interface_obj_sorted[j]->calculateALock() || interface_obj_sorted[j]->getRadioOnline()) {
+            if (!interface_obj_sorted[j]->calculateALock() && interface_obj_sorted[j]->getRadioOnline()) {
                 if (interface_obj_sorted[j]->getBitrate() > selected_radio->getBitrate()) {
                     if (queue_height[interface_obj_sorted[j]->getIndex()] > 0) {
                         selected_radio = interface_obj_sorted[j];
