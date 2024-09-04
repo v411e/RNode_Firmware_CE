@@ -1323,8 +1323,18 @@ void poll_buffers() {
 void packet_poll() {
     // If we have received a packet on an interface which needs to be processed
     while (!fifo_isempty(&packet_rdy_interfaces)) {
+        #if MCU_VARIANT == MCU_ESP32
+        portENTER_CRITICAL(&update_lock);
+        #elif MCU_VARIANT == MCU_NRF52
+        portENTER_CRITICAL();
+        #endif
         uint8_t packet_int = fifo_pop(&packet_rdy_interfaces);
         selected_radio = interface_obj[packet_int];
+        #if MCU_VARIANT == MCU_ESP32
+        portEXIT_CRITICAL(&update_lock);
+        #elif MCU_VARIANT == MCU_NRF52
+        portEXIT_CRITICAL();
+        #endif
         selected_radio->clearIRQStatus();
         selected_radio->handleDio0Rise();
     }
