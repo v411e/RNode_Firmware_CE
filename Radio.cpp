@@ -2576,8 +2576,17 @@ void sx128x::handleDio0Rise()
 
         uint8_t rxbuf[2] = {0};
         executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
-        _rxPacketLength = rxbuf[0];
+
+        // If implicit header mode is enabled, read packet length as payload length instead.
+        // See SX1280 datasheet v3.2, page 92
+        if (_implicitHeaderMode == 0x80) {
+            _rxPacketLength = _payloadLength;
+        } else {
+            _rxPacketLength = rxbuf[0];
+        }
+
         _fifo_rx_addr_ptr = rxbuf[1];
+
         readBuffer(_packet, _rxPacketLength);
 
         if (_onReceive) {
