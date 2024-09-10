@@ -98,7 +98,17 @@ extern RadioInterface* interface_obj[];
 void ISR_VECT onDio0Rise() {
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         if (digitalRead(interface_pins[i][5]) == HIGH) {
-            fifo_push(&packet_rdy_interfaces, i);
+            if (interface_obj[i]->getPacketValidity()) {
+                fifo_push(&packet_rdy_interfaces, i);
+            }
+            if (interfaces[i] == SX128X) {
+                // On the SX1280, there is a bug which can cause the busy line
+                // to remain high if a high amount of packets are received when
+                // in continuous RX mode. This is documented as Errata 16.1 in
+                // the SX1280 datasheet v3.2 (page 149)
+                // Therefore, the modem is set into receive mode each time a packet is received.
+                interface_obj[i]->receive();
+            }
         }
     }
 }
@@ -962,33 +972,17 @@ void sx126x::implicitHeaderMode()
 
 void sx126x::handleDio0Rise()
 {
-    uint8_t buf[2];
+    // received a packet
+    _packetIndex = 0;
 
-    buf[0] = 0x00;
-    buf[1] = 0x00;
+    // read packet length
+    uint8_t rxbuf[2] = {0};
+    executeOpcodeRead(OP_RX_BUFFER_STATUS_6X, rxbuf, 2);
+    int packetLength = rxbuf[0];
 
-    executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
-
-    executeOpcode(OP_CLEAR_IRQ_STATUS_6X, buf, 2);
-
-    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_6X) == 0) {
-        // received a packet
-        _packetIndex = 0;
-
-        // read packet length
-        uint8_t rxbuf[2] = {0};
-        executeOpcodeRead(OP_RX_BUFFER_STATUS_6X, rxbuf, 2);
-        int packetLength = rxbuf[0];
-
-        if (_onReceive) {
-            _onReceive(_index, packetLength);
-        }
+    if (_onReceive) {
+        _onReceive(_index, packetLength);
     }
-    // else {
-    //   Serial.println("CRCE");
-    //   Serial.println(buf[0]);
-    //   Serial.println(buf[1]);
-    // }
 }
 
 void sx126x::updateBitrate() {
@@ -1011,7 +1005,7 @@ void sx126x::updateBitrate() {
     }
 }
 
-void sx126x::clearIRQStatus() {
+bool ISR_VECT sx126x::getPacketValidity() {
     uint8_t buf[2];
 
     buf[0] = 0x00;
@@ -1020,6 +1014,12 @@ void sx126x::clearIRQStatus() {
     executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
 
     executeOpcode(OP_CLEAR_IRQ_STATUS_6X, buf, 2);
+
+    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_6X) == 0) {
+        return true;
+    } else {
+        return false;
+    }
 }
 // SX127x registers
 #define REG_FIFO_7X                   0x00
@@ -1512,11 +1512,6 @@ void sx127x::optimizeModemSensitivity() {
 }
 
 void sx127x::handleDio0Rise() {
-  int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
-
-  // Clear IRQs
-  writeRegister(REG_IRQ_FLAGS_7X, irqFlags);
-  if ((irqFlags & IRQ_PAYLOAD_CRC_ERROR_MASK_7X) == 0) {
     _packetIndex = 0;
     int packetLength = _implicitHeaderMode ? readRegister(REG_PAYLOAD_LENGTH_7X) : readRegister(REG_RX_NB_BYTES_7X);
     writeRegister(REG_FIFO_ADDR_PTR_7X, readRegister(REG_FIFO_RX_CURRENT_ADDR_7X));
@@ -1524,7 +1519,6 @@ void sx127x::handleDio0Rise() {
         _onReceive(_index, packetLength); 
     }
     writeRegister(REG_FIFO_ADDR_PTR_7X, 0);
-  }
 }
 
 void sx127x::updateBitrate() {
@@ -1546,11 +1540,17 @@ void sx127x::updateBitrate() {
     }
 }
 
-void sx127x::clearIRQStatus() {
+bool ISR_VECT sx127x::getPacketValidity() {
   int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
 
   // Clear IRQs
   writeRegister(REG_IRQ_FLAGS_7X, irqFlags);
+
+  if ((irqFlags & IRQ_PAYLOAD_CRC_ERROR_MASK_7X) == 0) {
+      return true;
+  } else {
+      return false;
+  }
 }
 
 // SX128x registers
@@ -2040,7 +2040,7 @@ uint8_t ISR_VECT sx128x::packetSnrRaw() {
 
 float ISR_VECT sx128x::packetSnr() {
     uint8_t buf[5] = {0};
-    executeOpcodeRead(OP_PACKET_STATUS_8X, buf, 3);
+    executeOpcodeRead(OP_PACKET_STATUS_8X, buf, 5);
     return float(buf[1]) * 0.25;
 }
 
@@ -2076,13 +2076,34 @@ int ISR_VECT sx128x::available()
 
 int ISR_VECT sx128x::read()
 {
-  if (!available()) {
-    return -1;
-  }
+    if (!available()) {
+        return -1;
+    }
 
-  uint8_t byte = _packet[_packetIndex];
-  _packetIndex++;
-  return byte;
+    // if received new packet
+    if (_packetIndex == 0) {
+        uint8_t rxbuf[2] = {0};
+        executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
+        int size;
+        // If implicit header mode is enabled, read packet length as payload length instead.
+        // See SX1280 datasheet v3.2, page 92
+        if (_implicitHeaderMode == 0x80) {
+            size = _payloadLength;
+        } else {
+            size = rxbuf[0];
+        }
+        _fifo_rx_addr_ptr = rxbuf[1];
+
+        if (size > 255) {
+            size = 255;
+        }
+
+        readBuffer(_packet, size);
+    }
+
+    uint8_t byte = _packet[_packetIndex];
+    _packetIndex++;
+    return byte;
 }
 
 int sx128x::peek()
@@ -2113,9 +2134,16 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
       buf[0] = 0xFF; 
       buf[1] = 0xFF;
 
+      // On the SX1280, no RxDone IRQ is generated if a packet is received with
+      // an invalid header, but the modem will be taken out of single RX mode.
+      // This can cause the modem to not receive packets until it is reset
+      // again. This is documented as Errata 16.2 in the SX1280 datasheet v3.2
+      // (page 150) Below, the header error IRQ is mapped to dio0 so that the
+      // modem can be set into RX mode again on reception of a corrupted
+      // header.
       // set dio0 masks
       buf[2] = 0x00;
-      buf[3] = IRQ_RX_DONE_MASK_8X; 
+      buf[3] = IRQ_RX_DONE_MASK_8X | IRQ_HEADER_ERROR_MASK_8X; 
 
       // set dio1 masks
       buf[4] = 0x00; 
@@ -2126,9 +2154,9 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
       buf[7] = 0x00;
 
       executeOpcode(OP_SET_IRQ_FLAGS_8X, buf, 8);
-//#ifdef SPI_HAS_NOTUSINGINTERRUPT
-//    _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
-//#endif
+#ifdef SPI_HAS_NOTUSINGINTERRUPT
+    _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
+#endif
 
     // make function available
     extern void onDio0Rise();
@@ -2136,9 +2164,9 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
     attachInterrupt(digitalPinToInterrupt(_dio0), onDio0Rise, RISING);
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
-//#ifdef SPI_HAS_NOTUSINGINTERRUPT
-//    _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
-//#endif
+#ifdef SPI_HAS_NOTUSINGINTERRUPT
+    _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
+#endif
   }
 }
 
@@ -2157,7 +2185,12 @@ void sx128x::receive(int size)
 
   rxAntEnable();
 
-    uint8_t mode[3] = {0xFF, 0xFF, 0xFF}; // continuous mode
+    // On the SX1280, there is a bug which can cause the busy line
+    // to remain high if a high amount of packets are received when
+    // in continuous RX mode. This is documented as Errata 16.1 in
+    // the SX1280 datasheet v3.2 (page 149)
+    // Therefore, the modem is set to single RX mode below instead.
+    uint8_t mode[3] = {0}; // single RX mode
     executeOpcode(OP_RX_8X, mode, 3);
 }
 
@@ -2561,38 +2594,22 @@ void sx128x::implicitHeaderMode()
 
 void sx128x::handleDio0Rise()
 {
-    uint8_t buf[2];
+    // received a packet
+    _packetIndex = 0;
 
-    buf[0] = 0x00;
-    buf[1] = 0x00;
+    uint8_t rxbuf[2] = {0};
+    executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
 
-    executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
+    // If implicit header mode is enabled, read packet length as payload length instead.
+    // See SX1280 datasheet v3.2, page 92
+    if (_implicitHeaderMode == 0x80) {
+        _rxPacketLength = _payloadLength;
+    } else {
+        _rxPacketLength = rxbuf[0];
+    }
 
-    executeOpcode(OP_CLEAR_IRQ_STATUS_8X, buf, 2);
-
-    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_8X) == 0) {
-        // received a packet
-        _packetIndex = 0;
-
-        uint8_t rxbuf[2] = {0};
-        executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
-
-        // If implicit header mode is enabled, read packet length as payload length instead.
-        // See SX1280 datasheet v3.2, page 92
-        if (_implicitHeaderMode == 0x80) {
-            _rxPacketLength = _payloadLength;
-        } else {
-            _rxPacketLength = rxbuf[0];
-        }
-
-        _fifo_rx_addr_ptr = rxbuf[1];
-
-        readBuffer(_packet, _rxPacketLength);
-
-        if (_onReceive) {
-            _onReceive(_index, _rxPacketLength);
-        }
-
+    if (_onReceive) {
+        _onReceive(_index, _rxPacketLength);
     }
 }
 
@@ -2622,7 +2639,7 @@ void sx128x::updateBitrate() {
     }
 }
 
-void sx128x::clearIRQStatus() {
+bool ISR_VECT sx128x::getPacketValidity() {
     uint8_t buf[2];
 
     buf[0] = 0x00;
@@ -2631,4 +2648,10 @@ void sx128x::clearIRQStatus() {
     executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
 
     executeOpcode(OP_CLEAR_IRQ_STATUS_8X, buf, 2);
+
+    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_8X) == 0) {
+        return true;
+    } else {
+        return false;
+    }
 }

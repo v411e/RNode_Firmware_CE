@@ -64,8 +64,6 @@ volatile bool serial_buffering = false;
 
 char sbuf[128];
 
-bool packet_ready = false;
-
 uint8_t *packet_queue[INTERFACE_COUNT];
 
 void setup() {
@@ -322,7 +320,6 @@ inline void kiss_write_packet(int index) {
   }
   serial_write(FEND);
   read_len = 0;
-  packet_ready = false;
 }
 
 inline void getPacketData(RadioInterface* radio, uint16_t len) {
@@ -332,17 +329,17 @@ inline void getPacketData(RadioInterface* radio, uint16_t len) {
 }
 
 void receive_callback(uint8_t index, int packet_size) {
+        selected_radio = interface_obj[index];
+    bool    ready    = false;
   if (!promisc) {
-    selected_radio = interface_obj[index];
-
     // The standard operating mode allows large
     // packets with a payload up to 500 bytes,
     // by combining two raw LoRa packets.
     // We read the 1-byte header and extract
     // packet sequence number and split flags
+    
     uint8_t header   = selected_radio->read(); packet_size--;
     uint8_t sequence = packetSequence(header);
-    bool    ready    = false;
 
     if (isSplitPacket(header) && seq == SEQ_UNSET) {
       // This is the first part of a split
@@ -388,20 +385,16 @@ void receive_callback(uint8_t index, int packet_size) {
       getPacketData(selected_radio, packet_size);
       ready = true;
     }
-
-    if (ready) {
-        packet_ready = true;
-    }  
   } else {
     // In promiscuous mode, raw packets are
     // output directly to the host
     read_len = 0;
 
     getPacketData(selected_radio, packet_size);
-    packet_ready = true;
+    ready = true;
   }
 
-  if (packet_ready) {
+  if (ready) {
         #if MCU_VARIANT == MCU_ESP32
         portENTER_CRITICAL(&update_lock);
         #elif MCU_VARIANT == MCU_NRF52
@@ -1329,13 +1322,12 @@ void packet_poll() {
         portENTER_CRITICAL();
         #endif
         uint8_t packet_int = fifo_pop(&packet_rdy_interfaces);
-        selected_radio = interface_obj[packet_int];
         #if MCU_VARIANT == MCU_ESP32
         portEXIT_CRITICAL(&update_lock);
         #elif MCU_VARIANT == MCU_NRF52
         portEXIT_CRITICAL();
         #endif
-        selected_radio->clearIRQStatus();
+        selected_radio = interface_obj[packet_int];
         selected_radio->handleDio0Rise();
     }
 }
