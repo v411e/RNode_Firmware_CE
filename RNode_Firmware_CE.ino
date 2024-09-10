@@ -130,8 +130,8 @@ void setup() {
   memset(packet_lengths_buf, 0, sizeof(packet_starts_buf));
 
   for (int i = 0; i < INTERFACE_COUNT; i++) {
-      fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH);
-      fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH);
+      fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH+1);
+      fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH+1);
       packet_queue[i] = (uint8_t*)malloc(getQueueSize(i)+1);
   }
 
@@ -600,7 +600,7 @@ void serialCallback(uint8_t sbyte) {
             uint8_t index = getInterfaceIndex(command);
         if (!fifo16_isfull(&packet_starts[index]) && (queued_bytes[index] < (getQueueSize(index)))) {
             uint16_t s = current_packet_start[index];
-            uint16_t e = queue_cursor[index]-1; if (e == -1) e = (getQueueSize(index))-1;
+            int32_t e = queue_cursor[index]-1; if (e == -1) e = (getQueueSize(index))-1;
             uint16_t l;
 
             if (s != e) {
@@ -1204,7 +1204,7 @@ void loop() {
         }
 
         if (queue_height[selected_radio->getIndex()] > 0) {
-            long check_time = millis();
+            uint32_t check_time = millis();
             if (check_time > selected_radio->getPostTxYieldTimeout()) {
                 if (selected_radio->getDCDWaiting() && (check_time >= selected_radio->getDCDWaitUntil())) { selected_radio->setDCDWaiting(false); }
                 if (!selected_radio->getDCDWaiting()) {
