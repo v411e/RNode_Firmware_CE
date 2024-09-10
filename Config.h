@@ -90,6 +90,7 @@
 	uint8_t seq				= 0xFF;
 	uint16_t read_len		= 0;
 
+    bool serial_in_frame = false;
 
     FIFOBuffer packet_rdy_interfaces;
 

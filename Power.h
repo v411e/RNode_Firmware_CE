@@ -273,6 +273,16 @@ void measure_battery() {
     if (battery_percent >= 98) {
         battery_state = BATTERY_STATE_CHARGED;
     }
+
+    #if HAS_BLE
+    if ((bt_state == BT_STATE_ON) || bt_state == BT_STATE_CONNECTED) {
+        if (battery_state != BATTERY_STATE_CHARGING) {
+            blebas.write(battery_percent);
+        } else {
+            blebas.write(100);
+        }
+    }
+    #endif
   #endif
 
   if (battery_ready) {

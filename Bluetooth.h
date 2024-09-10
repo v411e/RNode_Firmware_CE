@@ -307,6 +307,11 @@ bool bt_passkey_callback(uint16_t conn_handle, uint8_t const passkey[6], bool ma
 void bt_connect_callback(uint16_t conn_handle) {
     bt_state = BT_STATE_CONNECTED;
     cable_state = CABLE_STATE_DISCONNECTED;
+
+    BLEConnection* conn = Bluefruit.Connection(conn_handle);
+    conn->requestPHY(BLE_GAP_PHY_2MBPS);
+    conn->requestMtuExchange(512+3);
+    conn->requestDataLengthUpdate();
 }
 
 void bt_disconnect_callback(uint16_t conn_handle, uint8_t reason) {
@@ -342,6 +347,8 @@ bool bt_setup_hw() {
       Bluefruit.Security.setSecuredCallback(bt_connect_callback);
       Bluefruit.Periph.setDisconnectCallback(bt_disconnect_callback);
       Bluefruit.Security.setPairCompleteCallback(bt_pairing_complete);
+      Bluefruit.Periph.setConnInterval(6, 12); // 7.5 - 15 ms
+
       const ble_gap_addr_t gap_addr = Bluefruit.getAddr();
       char *data = (char*)malloc(BT_DEV_ADDR_LEN+1);
       for (int i = 0; i < BT_DEV_ADDR_LEN; i++) {
@@ -372,6 +379,9 @@ void bt_start() {
     // start device information service
     bledis.begin();
 
+    SerialBT.bufferTXD(true); // enable buffering
+
+    SerialBT.setPermission(SECMODE_ENC_WITH_MITM, SECMODE_ENC_WITH_MITM); // enable encryption for BLE serial
     SerialBT.begin();
 
     blebas.begin();
