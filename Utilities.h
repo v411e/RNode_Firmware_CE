@@ -579,6 +579,7 @@ void serial_write(uint8_t byte) {
 		} else {
 			SerialBT.write(byte);
 
+            #if MCU_VARIANT == MCU_NRF52 && HAS_BLE
             // This ensures that the TX buffer is flushed after a frame is queued in serial.
             // serial_in_frame is used to ensure that the flush only happens at the end of the frame
             if (serial_in_frame && byte == FEND) {
@@ -588,6 +589,7 @@ void serial_write(uint8_t byte) {
             else if (!serial_in_frame && byte == FEND) {
                 serial_in_frame = true;
             }
+            #endif
 		}
 	#else
 		Serial.write(byte);
