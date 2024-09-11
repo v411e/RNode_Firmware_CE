@@ -38,8 +38,9 @@
   #define BOARD_HELTEC32_V3   0x3A
   #define BOARD_RNODE_NG_20   0x40
   #define BOARD_RNODE_NG_21   0x41
-  #define BOARD_T3S3   0x42
+  #define BOARD_T3S3          0x42
   #define BOARD_TECHO         0x43
+  #define BOARD_E22_ESP32     0x44
   #define BOARD_GENERIC_NRF52 0x50
   #define BOARD_RAK4631       0x51
 
@@ -622,6 +623,45 @@
                8, // pin_reset
               -1, // pin_txen
               -1, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
+
+    #elif BOARD_MODEL == BOARD_E22_ESP32
+      #define HAS_DISPLAY true
+      #define DISPLAY OLED
+      #define HAS_BLUETOOTH true
+      #define HAS_BLE true
+      #define HAS_CONSOLE true
+      #define HAS_SD false
+      #define HAS_EEPROM true
+      #define I2C_SDA 21
+      #define I2C_SCL 22
+      #define INTERFACE_COUNT 1
+      const int pin_led_rx = 2;
+      const int pin_led_tx = 4;
+
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              true, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+              18, // pin_ss
+              5, // pin_sclk
+              27, // pin_mosi
+              19, // pin_miso
+              32, // pin_busy
+              33, // pin_dio
+              23, // pin_reset
+              -1, // pin_txen
+              14, // pin_rxen
               -1  // pin_tcxo_enable
           }
       };

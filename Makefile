@@ -77,6 +77,9 @@ firmware-t3s3_sx1262:
 firmware-t3s3_sx1280_pa:
 	arduino-cli compile --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc" -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x42\" \"-DBOARD_VARIANT=0xA5\""
 
+firmware-e22_esp32:
+	arduino-cli compile --fqbn esp32:esp32:esp32 -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x44\" \"-DEXTERNAL_LEDS=true\""
+
 firmware-lora32_v10:
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x39\""
 
@@ -200,6 +203,13 @@ upload-t3s3:
 	@sleep 1
 	rnodeconf $(or $(port), /dev/ttyACM0) --firmware-hash $$(./partition_hashes ./build/esp32.esp32.esp32s3/RNode_Firmware_CE.ino.bin)
 
+upload-e22_esp32:
+	arduino-cli upload -p $(or $(port), /dev/ttyUSB0) --fqbn esp32:esp32:esp32
+	@sleep 1
+	rnodeconf $(or $(port), /dev/ttyUSB0) --firmware-hash $$(./partition_hashes ./build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bin)
+	@sleep 3
+	python3 ./Release/esptool/esptool.py --chip esp32 --port $(or $(port), /dev/ttyUSB0) --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0x210000 ./Release/console_image.bin
+
 upload-featheresp32:
 	arduino-cli upload -p $(or $(port), /dev/ttyUSB0) --fqbn esp32:esp32:featheresp32
 	@sleep 1
@@ -214,7 +224,7 @@ upload-rak4631:
 
 release: release-all
 
-release-all: console-site spiffs-image release-tbeam release-tbeam_sx1262 release-lora32_v10 release-lora32_v20 release-lora32_v21 release-lora32_v10_extled release-lora32_v20_extled release-lora32_v21_extled release-lora32_v21_tcxo release-featheresp32 release-genericesp32 release-heltec32_v2 release-heltec32_v3 release-heltec32_v2_extled release-rnode_ng_20 release-rnode_ng_21 release-t3s3 release-hashes
+release-all: console-site spiffs-image release-tbeam release-tbeam_sx1262 release-lora32_v10 release-lora32_v20 release-lora32_v21 release-lora32_v10_extled release-lora32_v20_extled release-lora32_v21_extled release-lora32_v21_tcxo release-featheresp32 release-genericesp32 release-heltec32_v2 release-heltec32_v3 release-heltec32_v2_extled release-rnode_ng_20 release-rnode_ng_21 release-t3s3 release-e22_esp32 release-hashes
 
 release-hashes:
 	python3 ./release_hashes.py > ./Release/release.json
@@ -352,6 +362,15 @@ release-t3s3:
 	cp build/esp32.esp32.esp32s3/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_t3s3.bootloader
 	cp build/esp32.esp32.esp32s3/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_t3s3.partitions
 	zip --junk-paths ./Release/rnode_firmware_t3s3.zip ./Release/esptool/esptool.py ./Release/console_image.bin build/rnode_firmware_t3s3.boot_app0 build/rnode_firmware_t3s3.bin build/rnode_firmware_t3s3.bootloader build/rnode_firmware_t3s3.partitions
+	rm -r build
+
+release-e22_esp32:
+	arduino-cli compile --fqbn esp32:esp32:esp32 -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x44\""
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_esp32_e22.boot_app0
+	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bin build/rnode_firmware_esp32_e22.bin
+	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_esp32_e22.bootloader
+	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_esp32_e22.partitions
+	zip --junk-paths ./Release/rnode_firmware_esp32_e22.zip ./Release/esptool/esptool.py ./Release/console_image.bin build/rnode_firmware_esp32_e22.boot_app0 build/rnode_firmware_esp32_e22.bin build/rnode_firmware_esp32_e22.bootloader build/rnode_firmware_esp32_e22.partitions
 	rm -r build
 
 release-featheresp32:
