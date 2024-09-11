@@ -96,10 +96,11 @@ extern RadioInterface* interface_obj[];
 // which one is high. We can then use the index of this pin in the 2D array to
 // signal the correct interface to the main loop 
 void ISR_VECT onDio0Rise() {
+    BaseType_t int_status = taskENTER_CRITICAL_FROM_ISR();
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         if (digitalRead(interface_pins[i][5]) == HIGH) {
             if (interface_obj[i]->getPacketValidity()) {
-                fifo_push(&packet_rdy_interfaces, i);
+                interface_obj[i]->handleDio0Rise();
             }
             if (interfaces[i] == SX128X) {
                 // On the SX1280, there is a bug which can cause the busy line
@@ -111,6 +112,7 @@ void ISR_VECT onDio0Rise() {
             }
         }
     }
+    taskEXIT_CRITICAL_FROM_ISR(int_status);
 }
 
 sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
@@ -2622,11 +2624,11 @@ void sx128x::updateBitrate() {
         _csma_slot_ms = 10;
 
         float target_preamble_symbols;
-        if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
+        //if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
             target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        } else {
-            target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        }
+        //} else {
+            /*target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
+        }*/
         if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
             target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
         } else {

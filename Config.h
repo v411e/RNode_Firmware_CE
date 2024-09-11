@@ -78,6 +78,7 @@
 	bool pmu_ready     = false;
 	bool promisc       = false;
 	bool implicit      = false;
+    volatile bool packet_ready  = false;
 	uint8_t implicit_l = 0;
 
 	uint8_t op_mode   = MODE_HOST;
