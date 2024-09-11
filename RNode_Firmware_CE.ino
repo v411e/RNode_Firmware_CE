@@ -359,6 +359,7 @@ void receive_callback(uint8_t index, int packet_size) {
       getPacketData(selected_radio, packet_size);
 
       seq = SEQ_UNSET;
+      packet_interface = index;
       packet_ready = true;
 
     } else if (isSplitPacket(header) && seq != sequence) {
@@ -384,6 +385,8 @@ void receive_callback(uint8_t index, int packet_size) {
       }
 
       getPacketData(selected_radio, packet_size);
+
+      packet_interface = index;
       packet_ready = true;
     }
   } else {
@@ -392,6 +395,8 @@ void receive_callback(uint8_t index, int packet_size) {
     read_len = 0;
 
     getPacketData(selected_radio, packet_size);
+
+    packet_interface = index;
     packet_ready = true;
   }
 
@@ -1167,7 +1172,7 @@ void loop() {
         #endif
         kiss_indicate_stat_rssi();
         kiss_indicate_stat_snr();
-        kiss_write_packet(1);
+        kiss_write_packet(packet_interface);
   }
 
     bool ready = false;
