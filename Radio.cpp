@@ -2562,7 +2562,7 @@ void sx128x::disableCrc()
     setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
 }
 
-byte sx128x::random()
+uint8_t sx128x::random()
 {
     // todo: implement
     return 0x4; //chosen  by fair die roll

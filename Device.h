@@ -259,14 +259,12 @@ void device_validate_partitions() {
   // todo, add bootloader, partition table, or softdevice?
   calculate_region_hash(APPLICATION_START, USER_DATA_START, dev_firmware_hash);
   #endif
-  #if VALIDATE_FIRMWARE
     for (uint8_t i = 0; i < DEV_HASH_LEN; i++) {
       if (dev_firmware_hash_target[i] != dev_firmware_hash[i]) {
         fw_signature_validated = false;
         break;
       }
     }
-  #endif
 }
 
 bool device_firmware_ok() {
@@ -324,7 +322,8 @@ bool device_init() {
   } else {
     return false;
   }
-  #else //if VALIDATE_FIRMWARE is false
+  #else
+  // Skip hash comparison and checking BT
   return true;
   #endif
 }
