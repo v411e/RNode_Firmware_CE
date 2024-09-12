@@ -37,6 +37,7 @@ prep-samd:
 
 prep-nrf:
 	arduino-cli core update-index --config-file arduino-cli.yaml
+	arduino-cli core install adafruit:nrf52 --config-file arduino-cli.yaml
 	arduino-cli core install rakwireless:nrf52 --config-file arduino-cli.yaml
 	arduino-cli lib install "Crypto"
 	arduino-cli lib install "Adafruit GFX Library"
@@ -61,6 +62,14 @@ firmware-tbeam:
 
 firmware-tbeam_sx126x:
 	arduino-cli compile --fqbn esp32:esp32:t-beam -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x33\" \"-DMODEM=0x03\""
+
+firmware-techo: firmware-techo4 firmware-techo9
+
+firmware-techo4:
+	arduino-cli compile --fqbn adafruit:nrf52:pca10056 -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x43\" \"-DBOARD_VARIANT=0x16\""
+
+firmware-techo9:
+	arduino-cli compile --fqbn adafruit:nrf52:pca10056 -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x43\"  \"-DBOARD_VARIANT=0x17\""
 
 firmware-t3s3_sx1262:
 	arduino-cli compile --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc" -e --build-property "build.partitions=no_ota" --build-property "upload.maximum_size=2097152" --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x42\" \"-DBOARD_VARIANT=0xA1\""
@@ -122,6 +131,12 @@ upload-tbeam:
 	rnodeconf $(or $(port), /dev/ttyACM0) --firmware-hash $$(./partition_hashes ./build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.bin)
 	@sleep 3
 	python3 ./Release/esptool/esptool.py --chip esp32 --port $(or $(port), /dev/ttyACM0) --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0x210000 ./Release/console_image.bin
+
+upload-techo:
+	arduino-cli upload -p $(or $(port), /dev/ttyACM0) --fqbn adafruit:nrf52:pca10056
+	unzip -o build/adafruit.nrf52.pca10056/RNode_Firmware_CE.ino.zip -d build/adafruit.nrf52.pca10056
+	#rnodeconf $(or $(port), /dev/ttyACM0) --firmware-hash $$(sha256sum ./build/adafruit.nrf52.pca10056/RNode_Firmware_CE.ino.bin | grep -o '^\S*')
+	../Reticulum/RNS/Utilities/rnodeconf.py $(or $(port), /dev/ttyACM0) --firmware-hash $$(sha256sum ./build/adafruit.nrf52.pca10056/RNode_Firmware_CE.ino.bin | grep -o '^\S*')
 
 upload-lora32_v10:
 	arduino-cli upload -p $(or $(port), /dev/ttyUSB0) --fqbn esp32:esp32:ttgo-lora32

@@ -32,6 +32,9 @@
     #define MODEL_12 0x12
     #define MODEL_13 0x13 // RAK4631 LF with WisBlock SX1280 module (LIBSYS002)
     #define MODEL_14 0x14 // RAK4631 HF with WisBlock SX1280 module (LIBSYS002)
+	#define PRODUCT_TECHO 0x15
+	#define MODEL_16 0x16 // T-Echo 433
+	#define MODEL_17 0x17 // T-Echo 915
     #define MODEL_21 0x21 // European band, 868MHz
 	#define MODEL_A1 0xA1
     #define MODEL_A5 0xA5 // T3S3 SX1280 PA
