@@ -210,7 +210,12 @@ uint8_t boot_vector = 0x00;
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
 		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
 		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
-    #endif
+	#elif BOARD_MODEL == BOARD_TECHO
+		void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
+		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
+		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
+		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
+	#endif
 #endif
 
 void hard_reset(void) {
@@ -1160,6 +1165,8 @@ uint16_t getQueueSize(uint8_t index) {
         case 11:
             return CONFIG_QUEUE_11_SIZE;
         #endif
+		default:
+            return CONFIG_QUEUE_0_SIZE;
     }
 }
 
@@ -1334,7 +1341,7 @@ bool eeprom_product_valid() {
 	#if PLATFORM == PLATFORM_ESP32
 	if (rval == PRODUCT_RNODE || rval == BOARD_RNODE_NG_20 || rval == BOARD_RNODE_NG_21 || rval == PRODUCT_HMBRW || rval == PRODUCT_TBEAM || rval == PRODUCT_T32_10 || rval == PRODUCT_T32_20 || rval == PRODUCT_T32_21 || rval == PRODUCT_H32_V2 || rval == PRODUCT_H32_V3) {
 	#elif PLATFORM == PLATFORM_NRF52
-	if (rval == PRODUCT_RAK4631 || rval == PRODUCT_HMBRW || rval == PRODUCT_FREENODE) {
+	if (rval == PRODUCT_TECHO || rval == MODEL_16 || rval == MODEL_17 || rval == PRODUCT_RAK4631 || rval == PRODUCT_HMBRW || rval == PRODUCT_FREENODE) {
 	#else
 	if (false) {
 	#endif
@@ -1362,6 +1369,8 @@ bool eeprom_model_valid() {
 	if (model == MODEL_FF || model == MODEL_FE) {
 	#elif BOARD_MODEL == BOARD_TBEAM
 	if (model == MODEL_E4 || model == MODEL_E9 || model == MODEL_E3 || model == MODEL_E8) {
+	#elif BOARD_MODEL == BOARD_TECHO
+	if (model == MODEL_16 || model == MODEL_17) {
 	#elif BOARD_MODEL == BOARD_LORA32_V1_0
 	if (model == MODEL_BA || model == MODEL_BB) {
 	#elif BOARD_MODEL == BOARD_LORA32_V2_0

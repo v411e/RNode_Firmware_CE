@@ -744,6 +744,8 @@ void sx126x::enableTCXO() {
       uint8_t buf[4] = {MODE_TCXO_3_3V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_TBEAM
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
+    #elif BOARD_MODEL == BOARD_TECHO
+      uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_T3S3
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #else
@@ -2563,6 +2565,9 @@ void sx128x::disableCrc()
 byte sx128x::random()
 {
     // todo: implement
+    return 0x4; //chosen  by fair die roll
+                //guarenteed to be random
+                //https://xkcd.com/221/
 }
 
 void sx128x::setSPIFrequency(uint32_t frequency)
