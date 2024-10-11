@@ -106,15 +106,23 @@ void busyCallback(const void* p) {
 #if DISPLAY == OLED
 Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
 float disp_target_fps = 7;
+#define SCREENSAVER_TIME 500 // ms
+uint32_t last_screensaver = 0;
+#define SCREENSAVER_INTERVAL 600000 // 10 minutes in ms
+bool screensaver_enabled = false;
 #endif
 #endif
 #if BOARD_MODEL == BOARD_RAK4631
 #if DISPLAY == EINK_BW
 GxEPD2_BW<DISPLAY_MODEL, DISPLAY_MODEL::HEIGHT> display(DISPLAY_MODEL(pin_disp_cs, pin_disp_dc, pin_disp_reset, pin_disp_busy));
 float disp_target_fps = 0.2;
+uint32_t last_epd_refresh = 0;
+#define REFRESH_PERIOD 300000 // 5 minutes in ms
 #elif DISPLAY == EINK_3C
 GxEPD2_3C<DISPLAY_MODEL, DISPLAY_MODEL::HEIGHT> display(DISPLAY_MODEL(pin_disp_cs, pin_disp_dc, pin_disp_reset, pin_disp_busy));
-float disp_target_fps = 0.05; // refresh usually takes longer on 3C, hence 4x the refresh period
+float disp_target_fps = 0.05; // refresh usually takes longer on 3C, hence this is 4x the BW refresh period
+uint32_t last_epd_refresh = 0;
+#define REFRESH_PERIOD 600000 // 10 minutes in ms
 #endif
 #else
 // add more eink compatible boards here
@@ -129,6 +137,7 @@ uint8_t disp_ext_fb = false;
 unsigned char fb[512];
 uint32_t last_disp_update = 0;
 int disp_update_interval = 1000/disp_target_fps;
+
 uint32_t last_page_flip = 0;
 uint32_t last_interface_page_flip = 0;
 int page_interval = 4000;
@@ -1111,14 +1120,37 @@ void update_display(bool blank = false) {
       update_stat_area();
       update_disp_area();
       display.display();
+
+      uint32_t current = millis();
+      // Invert display to protect against OLED screen burn in
+      if (screensaver_enabled) {
+          if (current-last_screensaver >= SCREENSAVER_INTERVAL+SCREENSAVER_TIME) {
+              display.invertDisplay(0);
+              last_screensaver = current;
+              screensaver_enabled = false;
+          }
+      }
+      else if (current-last_screensaver >= SCREENSAVER_INTERVAL) {
+        display.invertDisplay(1);
+        screensaver_enabled = true;
+      }
       #elif DISP_H == 122 && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
       display.setFullWindow();
       display.fillScreen(GxEPD_WHITE);
       update_stat_area();
       update_disp_area();
-      display.display(true);
+
+      uint32_t current = millis();
+      if (current-last_epd_refresh >= REFRESH_PERIOD) {
+          // Perform a full refresh after the correct time has elapsed
+          display.display(false);
+          last_epd_refresh = current;
+      } else {
+          // Only perform a partial refresh
+          display.display(true);
+      }
       #endif
-      last_disp_update = millis();
+      last_disp_update = current;
     }
   }
 }

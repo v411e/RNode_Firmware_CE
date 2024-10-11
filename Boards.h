@@ -38,7 +38,9 @@
   #define BOARD_HELTEC32_V3   0x3A
   #define BOARD_RNODE_NG_20   0x40
   #define BOARD_RNODE_NG_21   0x41
-  #define BOARD_T3S3   0x42
+  #define BOARD_T3S3          0x42
+  #define BOARD_TECHO         0x43
+  #define BOARD_E22_ESP32     0x44
   #define BOARD_GENERIC_NRF52 0x50
   #define BOARD_RAK4631       0x51
 
@@ -50,7 +52,7 @@
   #if defined(ESP32)
     #define PLATFORM PLATFORM_ESP32
     #define MCU_VARIANT MCU_ESP32
-  #elif defined(NRF52840_XXAA)
+  #elif defined(NRF52840_XXAA) || defined(_VARIANT_PCA10056_)
     #include <variant.h>
     #define PLATFORM PLATFORM_NRF52
     #define MCU_VARIANT MCU_NRF52
@@ -624,12 +626,110 @@
               -1  // pin_tcxo_enable
           }
       };
+
+    #elif BOARD_MODEL == BOARD_E22_ESP32
+      #define HAS_DISPLAY true
+      #define DISPLAY OLED
+      #define HAS_BLUETOOTH true
+      #define HAS_BLE true
+      #define HAS_CONSOLE true
+      #define HAS_SD false
+      #define HAS_EEPROM true
+      #define I2C_SDA 21
+      #define I2C_SCL 22
+      #define INTERFACE_COUNT 1
+      const int pin_led_rx = 2;
+      const int pin_led_tx = 4;
+
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              true, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+              18, // pin_ss
+              5, // pin_sclk
+              27, // pin_mosi
+              19, // pin_miso
+              32, // pin_busy
+              33, // pin_dio
+              23, // pin_reset
+              -1, // pin_txen
+              14, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
     #else
       #error An unsupported ESP32 board was selected. Cannot compile RNode firmware.
     #endif
   
   #elif MCU_VARIANT == MCU_NRF52
-    #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_FREENODE
+     #if BOARD_MODEL == BOARD_TECHO
+      #define VALIDATE_FIRMWARE false
+      //#define GPS_BAUD_RATE 115200
+      //#define PIN_GPS_TX 41
+      //#define PIN_GPS_RX 40
+      #define EEPROM_SIZE 296
+      #define EEPROM_OFFSET EEPROM_SIZE-EEPROM_RESERVED
+      //#define HAS_EEPROM true
+      //#define HAS_SD true
+      //#define HAS_DISPLAY true
+      //#define HAS_CONSOLE true
+      //#define HAS_TXCO true
+      //#define DISPLAY EINK_BW
+      //#define HAS_BLE true
+      //#define HAS_PMU true
+      #define CONFIG_UART_BUFFER_SIZE 40000
+      #define CONFIG_QUEUE_0_SIZE 6144
+      #define CONFIG_QUEUE_MAX_LENGTH 200
+      #define BLE_MANUFACTURER "LilyGO"
+      #define BLE_MODEL "T-Echo"
+      #define INTERFACE_COUNT 1
+      //#define I2C_SDA 26
+      //#define I2C_SCL 27
+      #define CONFIG_QUEUE_1_SIZE 40000
+      // first interface in list is the primary
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX126X};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                  // SX1262
+          {
+              false, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }
+      };
+
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+              24, // pin_ss 
+              19, // pin_sclk
+              22, // pin_mosi
+              23, // pin_miso
+              17, // pin_busy
+              20, // pin_dio
+              25, // pin_reset
+              -1, // pin_txen
+              -1, // pin_rxen
+              21  // pin_tcxo_enable
+          }
+      };
+
+      const int pin_disp_cs = 30;
+      const int pin_disp_dc = 28;
+      const int pin_disp_reset = 2;
+      const int pin_disp_busy = 3;
+      const int pin_disp_en = 43;
+
+      const int pin_led_rx = LED_BLUE;
+      const int pin_led_tx = LED_RED;
+    #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_FREENODE
       #define HAS_EEPROM false
       #define HAS_DISPLAY true
       #define DISPLAY EINK_BW
@@ -639,7 +739,7 @@
       #define HAS_PMU true
       #define HAS_NP false
       #define HAS_SD false
-      #define CONFIG_UART_BUFFER_SIZE 6144
+      #define CONFIG_UART_BUFFER_SIZE 40000
       #define CONFIG_QUEUE_0_SIZE 6144
       #define CONFIG_QUEUE_MAX_LENGTH 200
       #define EEPROM_SIZE 296
@@ -678,7 +778,7 @@
       #elif BOARD_VARIANT == MODEL_13 || BOARD_VARIANT == MODEL_14 || BOARD_VARIANT == MODEL_21
       #define INTERFACE_COUNT 2
 
-      #define CONFIG_QUEUE_1_SIZE 20000
+      #define CONFIG_QUEUE_1_SIZE 40000
 
       // first interface in list is the primary
       const uint8_t interfaces[INTERFACE_COUNT] = {SX126X, SX128X};
@@ -726,17 +826,6 @@
       };
       #endif
 
-        #define INTERFACE_SPI
-        // Required because on RAK4631, non-default SPI pins must be initialised when class is declared.
-      const SPIClass interface_spi[1] = {
-            // SX1262
-            SPIClass(
-                NRF_SPIM2, 
-                interface_pins[0][3], 
-                interface_pins[0][1], 
-                interface_pins[0][2]
-               )
-      };
 
       const int pin_disp_cs = SS;
       const int pin_disp_dc = WB_IO1;
@@ -751,11 +840,5 @@
       #error An unsupported nRF board was selected. Cannot compile RNode firmware.
     #endif
 
-  #endif
-  #ifndef INTERFACE_SPI
-    // INTERFACE_SPI is only required on NRF52 platforms, as the SPI pins are set in the class constructor and not by a setter method.
-    // Even if custom SPI interfaces are not needed, the array must exist to prevent compilation errors.
-    #define INTERFACE_SPI
-    const SPIClass interface_spi[1];
   #endif
 #endif

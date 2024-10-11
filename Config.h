@@ -28,6 +28,8 @@
 	#define CABLE_STATE_DISCONNECTED 0x00
 	#define CABLE_STATE_CONNECTED    0x01
 	uint8_t cable_state = CABLE_STATE_DISCONNECTED;
+
+    #define MAX_INTERFACES 12
 	
 	#define BT_STATE_NA        0xff
 	#define BT_STATE_OFF       0x00
@@ -78,6 +80,9 @@
 	bool implicit      = false;
 	uint8_t implicit_l = 0;
 
+    volatile bool packet_ready  = false;
+    volatile uint8_t packet_interface = 0xFF;
+
 	uint8_t op_mode   = MODE_HOST;
 	uint8_t model     = 0x00;
 	uint8_t hwrev     = 0x00;
@@ -87,6 +92,12 @@
 	uint8_t last_snr_raw	= 0x80;
 	uint8_t seq				= 0xFF;
 	uint16_t read_len		= 0;
+
+    bool serial_in_frame = false;
+
+    FIFOBuffer packet_rdy_interfaces;
+
+    uint8_t packet_rdy_interfaces_buf[MAX_INTERFACES];
 
 	// Incoming packet buffer
 	uint8_t pbuf[MTU];

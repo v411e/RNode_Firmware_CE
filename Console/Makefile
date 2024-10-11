@@ -14,10 +14,10 @@ dirs:
 	@mkdir -p ./build/images
 
 pages:
-	python ./build.py
+	python3 ./build.py
 
 pages-debug:
-	python ./build.py --no-gz --no-remap
+	python3 ./build.py --no-gz --no-remap
 
 sourcepack:
 	@echo Packing firmware sources...
@@ -44,4 +44,4 @@ site: clean external dirs data sourcepack pages
 local: clean external dirs data sourcepack pages-debug
 
 serve:
-	python -m http.server 7777 --bind 127.0.0.1 --directory ./build
+	python3 -m http.server 7777 --bind 127.0.0.1 --directory ./build

@@ -4,7 +4,7 @@
 // Modifications and additions copyright 2024 by Mark Qvist & Jacob Eva
 // Obviously still under the MIT license.
 
-#include "Radio.h"
+#include "Radio.hpp"
 
 #if PLATFORM == PLATFORM_ESP32 
   #if defined(ESP32) and !defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -88,8 +88,7 @@
 #define FREQ_DIV_6X (double)pow(2.0, 25.0)
 #define FREQ_STEP_6X (double)(XTAL_FREQ_6X / FREQ_DIV_6X)
 
-extern bool process_packet;
-extern uint8_t packet_interface;
+extern FIFOBuffer packet_rdy_interfaces;
 extern RadioInterface* interface_obj[];
 
 // ISRs cannot provide parameters to the functions they call. Since we have
@@ -97,16 +96,26 @@ extern RadioInterface* interface_obj[];
 // which one is high. We can then use the index of this pin in the 2D array to
 // signal the correct interface to the main loop 
 void ISR_VECT onDio0Rise() {
+    BaseType_t int_status = taskENTER_CRITICAL_FROM_ISR();
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         if (digitalRead(interface_pins[i][5]) == HIGH) {
-            process_packet = true;
-            packet_interface = i;
-            break;
+            if (interface_obj[i]->getPacketValidity()) {
+                interface_obj[i]->handleDio0Rise();
+            }
+            if (interfaces[i] == SX128X) {
+                // On the SX1280, there is a bug which can cause the busy line
+                // to remain high if a high amount of packets are received when
+                // in continuous RX mode. This is documented as Errata 16.1 in
+                // the SX1280 datasheet v3.2 (page 149)
+                // Therefore, the modem is set into receive mode each time a packet is received.
+                interface_obj[i]->receive();
+            }
         }
     }
+    taskEXIT_CRITICAL_FROM_ISR(int_status);
 }
 
-sx126x::sx126x(uint8_t index, SPIClass spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
+sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0), _spiModem(spi), _ss(ss),
     _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
@@ -130,12 +139,12 @@ bool sx126x::preInit() {
   // todo: check if this change causes issues on any platforms
   #if MCU_VARIANT == MCU_ESP32
   if (_sclk != -1 && _miso != -1 && _mosi != -1 && _ss != -1) {
-    _spiModem.begin(_sclk, _miso, _mosi, _ss);
+    _spiModem->begin(_sclk, _miso, _mosi, _ss);
   } else {
-    _spiModem.begin();
+    _spiModem->begin();
   }
   #else
-    _spiModem.begin();
+    _spiModem->begin();
   #endif
 
   // check version (retry for up to 2 seconds)
@@ -177,15 +186,15 @@ uint8_t ISR_VECT sx126x::singleTransfer(uint8_t opcode, uint16_t address, uint8_
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer((address & 0xFF00) >> 8);
-    _spiModem.transfer(address & 0x00FF);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer((address & 0xFF00) >> 8);
+    _spiModem->transfer(address & 0x00FF);
     if (opcode == OP_READ_REGISTER_6X) {
-        _spiModem.transfer(0x00);
+        _spiModem->transfer(0x00);
     }
-    response = _spiModem.transfer(value);
-    _spiModem.endTransaction();
+    response = _spiModem->transfer(value);
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 
@@ -222,15 +231,15 @@ void sx126x::executeOpcode(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -241,16 +250,16 @@ void sx126x::executeOpcodeRead(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -261,17 +270,17 @@ void sx126x::writeBuffer(const uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_WRITE_6X);
-    _spiModem.transfer(_fifo_tx_addr_ptr);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_WRITE_6X);
+    _spiModem->transfer(_fifo_tx_addr_ptr);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
         _fifo_tx_addr_ptr++;
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -282,17 +291,17 @@ void sx126x::readBuffer(uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_READ_6X);
-    _spiModem.transfer(_fifo_rx_addr_ptr);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_READ_6X);
+    _spiModem->transfer(_fifo_rx_addr_ptr);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -451,7 +460,7 @@ void sx126x::end()
   sleep();
 
   // stop SPI
-  _spiModem.end();
+  _spiModem->end();
 
   _bitrate = 0;
 
@@ -676,7 +685,7 @@ void sx126x::onReceive(void(*callback)(uint8_t, int))
 
     executeOpcode(OP_SET_IRQ_FLAGS_6X, buf, 8);
 #ifdef SPI_HAS_NOTUSINGINTERRUPT
-    _spiModem.usingInterrupt(digitalPinToInterrupt(_dio0));
+    _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
 #endif
     // make function available
     extern void onDio0Rise();
@@ -685,7 +694,7 @@ void sx126x::onReceive(void(*callback)(uint8_t, int))
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
 #ifdef SPI_HAS_NOTUSINGINTERRUPT
-    _spiModem.notUsingInterrupt(digitalPinToInterrupt(_dio0));
+    _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
 #endif
   }
 }
@@ -734,6 +743,8 @@ void sx126x::enableTCXO() {
     #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_HELTEC32_V3
       uint8_t buf[4] = {MODE_TCXO_3_3V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_TBEAM
+      uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
+    #elif BOARD_MODEL == BOARD_TECHO
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_T3S3
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
@@ -965,33 +976,17 @@ void sx126x::implicitHeaderMode()
 
 void sx126x::handleDio0Rise()
 {
-    uint8_t buf[2];
+    // received a packet
+    _packetIndex = 0;
 
-    buf[0] = 0x00;
-    buf[1] = 0x00;
+    // read packet length
+    uint8_t rxbuf[2] = {0};
+    executeOpcodeRead(OP_RX_BUFFER_STATUS_6X, rxbuf, 2);
+    int packetLength = rxbuf[0];
 
-    executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
-
-    executeOpcode(OP_CLEAR_IRQ_STATUS_6X, buf, 2);
-
-    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_6X) == 0) {
-        // received a packet
-        _packetIndex = 0;
-
-        // read packet length
-        uint8_t rxbuf[2] = {0};
-        executeOpcodeRead(OP_RX_BUFFER_STATUS_6X, rxbuf, 2);
-        int packetLength = rxbuf[0];
-
-        if (_onReceive) {
-            _onReceive(_index, packetLength);
-        }
+    if (_onReceive) {
+        _onReceive(_index, packetLength);
     }
-    // else {
-    //   Serial.println("CRCE");
-    //   Serial.println(buf[0]);
-    //   Serial.println(buf[1]);
-    // }
 }
 
 void sx126x::updateBitrate() {
@@ -1014,7 +1009,7 @@ void sx126x::updateBitrate() {
     }
 }
 
-void sx126x::clearIRQStatus() {
+bool ISR_VECT sx126x::getPacketValidity() {
     uint8_t buf[2];
 
     buf[0] = 0x00;
@@ -1023,6 +1018,12 @@ void sx126x::clearIRQStatus() {
     executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
 
     executeOpcode(OP_CLEAR_IRQ_STATUS_6X, buf, 2);
+
+    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_6X) == 0) {
+        return true;
+    } else {
+        return false;
+    }
 }
 // SX127x registers
 #define REG_FIFO_7X                   0x00
@@ -1081,7 +1082,7 @@ void sx126x::clearIRQStatus() {
 
 #define SYNC_WORD_7X                  0x12
 
-sx127x::sx127x(uint8_t index, SPIClass spi, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy) :
+sx127x::sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy) :
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
@@ -1116,12 +1117,12 @@ bool sx127x::preInit() {
   // todo: check if this change causes issues on any platforms
   #if MCU_VARIANT == MCU_ESP32
   if (_sclk != -1 && _miso != -1 && _mosi != -1 && _ss != -1) {
-    _spiModem.begin(_sclk, _miso, _mosi, _ss);
+    _spiModem->begin(_sclk, _miso, _mosi, _ss);
   } else {
-    _spiModem.begin();
+    _spiModem->begin();
   }
   #else
-    _spiModem.begin();
+    _spiModem->begin();
   #endif
 
   // Check modem version
@@ -1143,10 +1144,10 @@ uint8_t ISR_VECT sx127x::singleTransfer(uint8_t address, uint8_t value) {
   uint8_t response;
 
   digitalWrite(_ss, LOW);
-  _spiModem.beginTransaction(_spiSettings);
-  _spiModem.transfer(address);
-  response = _spiModem.transfer(value);
-  _spiModem.endTransaction();
+  _spiModem->beginTransaction(_spiSettings);
+  _spiModem->transfer(address);
+  response = _spiModem->transfer(value);
+  _spiModem->endTransaction();
   digitalWrite(_ss, HIGH);
 
   return response;
@@ -1193,7 +1194,7 @@ int sx127x::begin() {
 
 void sx127x::end() {
   sleep();
-  _spiModem.end();
+  _spiModem->end();
   _bitrate = 0;
   _radio_online = false;
   _preinit_done = false;
@@ -1331,7 +1332,7 @@ void sx127x::onReceive(void(*callback)(uint8_t, int)) {
     writeRegister(REG_DIO_MAPPING_1_7X, 0x00);
     
     #ifdef SPI_HAS_NOTUSINGINTERRUPT
-      _spiModem.usingInterrupt(digitalPinToInterrupt(_dio0));
+      _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
     #endif
     
     // make function available
@@ -1343,7 +1344,7 @@ void sx127x::onReceive(void(*callback)(uint8_t, int)) {
     detachInterrupt(digitalPinToInterrupt(_dio0));
     
     #ifdef SPI_HAS_NOTUSINGINTERRUPT
-      _spiModem.notUsingInterrupt(digitalPinToInterrupt(_dio0));
+      _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
     #endif
   }
 }
@@ -1515,11 +1516,6 @@ void sx127x::optimizeModemSensitivity() {
 }
 
 void sx127x::handleDio0Rise() {
-  int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
-
-  // Clear IRQs
-  writeRegister(REG_IRQ_FLAGS_7X, irqFlags);
-  if ((irqFlags & IRQ_PAYLOAD_CRC_ERROR_MASK_7X) == 0) {
     _packetIndex = 0;
     int packetLength = _implicitHeaderMode ? readRegister(REG_PAYLOAD_LENGTH_7X) : readRegister(REG_RX_NB_BYTES_7X);
     writeRegister(REG_FIFO_ADDR_PTR_7X, readRegister(REG_FIFO_RX_CURRENT_ADDR_7X));
@@ -1527,7 +1523,6 @@ void sx127x::handleDio0Rise() {
         _onReceive(_index, packetLength); 
     }
     writeRegister(REG_FIFO_ADDR_PTR_7X, 0);
-  }
 }
 
 void sx127x::updateBitrate() {
@@ -1549,11 +1544,17 @@ void sx127x::updateBitrate() {
     }
 }
 
-void sx127x::clearIRQStatus() {
+bool ISR_VECT sx127x::getPacketValidity() {
   int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
 
   // Clear IRQs
   writeRegister(REG_IRQ_FLAGS_7X, irqFlags);
+
+  if ((irqFlags & IRQ_PAYLOAD_CRC_ERROR_MASK_7X) == 0) {
+      return true;
+  } else {
+      return false;
+  }
 }
 
 // SX128x registers
@@ -1599,7 +1600,7 @@ void sx127x::clearIRQStatus() {
 #define FREQ_DIV_8X (double)pow(2.0, 18.0)
 #define FREQ_STEP_8X (double)(XTAL_FREQ_8X / FREQ_DIV_8X)
 
-sx128x::sx128x(uint8_t index, SPIClass spi, bool tcxo, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen, int txen) :
+sx128x::sx128x(uint8_t index, SPIClass* spi, bool tcxo, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen, int txen) :
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
@@ -1626,12 +1627,12 @@ bool sx128x::preInit() {
   // todo: check if this change causes issues on any platforms
   #if MCU_VARIANT == MCU_ESP32
   if (_sclk != -1 && _miso != -1 && _mosi != -1 && _ss != -1) {
-    _spiModem.begin(_sclk, _miso, _mosi, _ss);
+    _spiModem->begin(_sclk, _miso, _mosi, _ss);
   } else {
-    _spiModem.begin();
+    _spiModem->begin();
   }
   #else
-    _spiModem.begin();
+    _spiModem->begin();
   #endif
 
   // check version (retry for up to 2 seconds)
@@ -1676,15 +1677,15 @@ uint8_t ISR_VECT sx128x::singleTransfer(uint8_t opcode, uint16_t address, uint8_
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer((address & 0xFF00) >> 8);
-    _spiModem.transfer(address & 0x00FF);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer((address & 0xFF00) >> 8);
+    _spiModem->transfer(address & 0x00FF);
     if (opcode == OP_READ_REGISTER_8X) {
-        _spiModem.transfer(0x00);
+        _spiModem->transfer(0x00);
     }
-    response = _spiModem.transfer(value);
-    _spiModem.endTransaction();
+    response = _spiModem->transfer(value);
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 
@@ -1734,15 +1735,15 @@ void sx128x::executeOpcode(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1753,16 +1754,16 @@ void sx128x::executeOpcodeRead(uint8_t opcode, uint8_t *buffer, uint8_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(opcode);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(opcode);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1773,17 +1774,17 @@ void sx128x::writeBuffer(const uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_WRITE_8X);
-    _spiModem.transfer(_fifo_tx_addr_ptr);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_WRITE_8X);
+    _spiModem->transfer(_fifo_tx_addr_ptr);
 
     for (int i = 0; i < size; i++)
     {
-        _spiModem.transfer(buffer[i]);
+        _spiModem->transfer(buffer[i]);
         _fifo_tx_addr_ptr++;
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1794,17 +1795,17 @@ void sx128x::readBuffer(uint8_t* buffer, size_t size)
 
     digitalWrite(_ss, LOW);
 
-    _spiModem.beginTransaction(_spiSettings);
-    _spiModem.transfer(OP_FIFO_READ_8X);
-    _spiModem.transfer(_fifo_rx_addr_ptr);
-    _spiModem.transfer(0x00);
+    _spiModem->beginTransaction(_spiSettings);
+    _spiModem->transfer(OP_FIFO_READ_8X);
+    _spiModem->transfer(_fifo_rx_addr_ptr);
+    _spiModem->transfer(0x00);
 
     for (int i = 0; i < size; i++)
     {
-        buffer[i] = _spiModem.transfer(0x00);
+        buffer[i] = _spiModem->transfer(0x00);
     }
 
-    _spiModem.endTransaction();
+    _spiModem->endTransaction();
 
     digitalWrite(_ss, HIGH);
 }
@@ -1921,7 +1922,7 @@ void sx128x::end()
   sleep();
 
   // stop SPI
-  _spiModem.end();
+  _spiModem->end();
 
   _bitrate = 0;
 
@@ -2043,7 +2044,7 @@ uint8_t ISR_VECT sx128x::packetSnrRaw() {
 
 float ISR_VECT sx128x::packetSnr() {
     uint8_t buf[5] = {0};
-    executeOpcodeRead(OP_PACKET_STATUS_8X, buf, 3);
+    executeOpcodeRead(OP_PACKET_STATUS_8X, buf, 5);
     return float(buf[1]) * 0.25;
 }
 
@@ -2079,13 +2080,34 @@ int ISR_VECT sx128x::available()
 
 int ISR_VECT sx128x::read()
 {
-  if (!available()) {
-    return -1;
-  }
+    if (!available()) {
+        return -1;
+    }
 
-  uint8_t byte = _packet[_packetIndex];
-  _packetIndex++;
-  return byte;
+    // if received new packet
+    if (_packetIndex == 0) {
+        uint8_t rxbuf[2] = {0};
+        executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
+        int size;
+        // If implicit header mode is enabled, read packet length as payload length instead.
+        // See SX1280 datasheet v3.2, page 92
+        if (_implicitHeaderMode == 0x80) {
+            size = _payloadLength;
+        } else {
+            size = rxbuf[0];
+        }
+        _fifo_rx_addr_ptr = rxbuf[1];
+
+        if (size > 255) {
+            size = 255;
+        }
+
+        readBuffer(_packet, size);
+    }
+
+    uint8_t byte = _packet[_packetIndex];
+    _packetIndex++;
+    return byte;
 }
 
 int sx128x::peek()
@@ -2116,9 +2138,16 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
       buf[0] = 0xFF; 
       buf[1] = 0xFF;
 
+      // On the SX1280, no RxDone IRQ is generated if a packet is received with
+      // an invalid header, but the modem will be taken out of single RX mode.
+      // This can cause the modem to not receive packets until it is reset
+      // again. This is documented as Errata 16.2 in the SX1280 datasheet v3.2
+      // (page 150) Below, the header error IRQ is mapped to dio0 so that the
+      // modem can be set into RX mode again on reception of a corrupted
+      // header.
       // set dio0 masks
       buf[2] = 0x00;
-      buf[3] = IRQ_RX_DONE_MASK_8X; 
+      buf[3] = IRQ_RX_DONE_MASK_8X | IRQ_HEADER_ERROR_MASK_8X; 
 
       // set dio1 masks
       buf[4] = 0x00; 
@@ -2129,9 +2158,9 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
       buf[7] = 0x00;
 
       executeOpcode(OP_SET_IRQ_FLAGS_8X, buf, 8);
-//#ifdef SPI_HAS_NOTUSINGINTERRUPT
-//    _spiModem.usingInterrupt(digitalPinToInterrupt(_dio0));
-//#endif
+#ifdef SPI_HAS_NOTUSINGINTERRUPT
+    _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
+#endif
 
     // make function available
     extern void onDio0Rise();
@@ -2139,9 +2168,9 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
     attachInterrupt(digitalPinToInterrupt(_dio0), onDio0Rise, RISING);
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
-//#ifdef SPI_HAS_NOTUSINGINTERRUPT
-//    _spiModem.notUsingInterrupt(digitalPinToInterrupt(_dio0));
-//#endif
+#ifdef SPI_HAS_NOTUSINGINTERRUPT
+    _spiModem->notUsingInterrupt(digitalPinToInterrupt(_dio0));
+#endif
   }
 }
 
@@ -2160,7 +2189,12 @@ void sx128x::receive(int size)
 
   rxAntEnable();
 
-    uint8_t mode[3] = {0xFF, 0xFF, 0xFF}; // continuous mode
+    // On the SX1280, there is a bug which can cause the busy line
+    // to remain high if a high amount of packets are received when
+    // in continuous RX mode. This is documented as Errata 16.1 in
+    // the SX1280 datasheet v3.2 (page 149)
+    // Therefore, the modem is set to single RX mode below instead.
+    uint8_t mode[3] = {0}; // single RX mode
     executeOpcode(OP_RX_8X, mode, 3);
 }
 
@@ -2528,9 +2562,12 @@ void sx128x::disableCrc()
     setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
 }
 
-byte sx128x::random()
+uint8_t sx128x::random()
 {
     // todo: implement
+    return 0x4; //chosen  by fair die roll
+                //guarenteed to be random
+                //https://xkcd.com/221/
 }
 
 void sx128x::setSPIFrequency(uint32_t frequency)
@@ -2564,29 +2601,22 @@ void sx128x::implicitHeaderMode()
 
 void sx128x::handleDio0Rise()
 {
-    uint8_t buf[2];
+    // received a packet
+    _packetIndex = 0;
 
-    buf[0] = 0x00;
-    buf[1] = 0x00;
+    uint8_t rxbuf[2] = {0};
+    executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
 
-    executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
-
-    executeOpcode(OP_CLEAR_IRQ_STATUS_8X, buf, 2);
-
-    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_8X) == 0) {
-        // received a packet
-        _packetIndex = 0;
-
-        uint8_t rxbuf[2] = {0};
-        executeOpcodeRead(OP_RX_BUFFER_STATUS_8X, rxbuf, 2);
+    // If implicit header mode is enabled, read packet length as payload length instead.
+    // See SX1280 datasheet v3.2, page 92
+    if (_implicitHeaderMode == 0x80) {
+        _rxPacketLength = _payloadLength;
+    } else {
         _rxPacketLength = rxbuf[0];
-        _fifo_rx_addr_ptr = rxbuf[1];
-        readBuffer(_packet, _rxPacketLength);
+    }
 
-        if (_onReceive) {
-            _onReceive(_index, _rxPacketLength);
-        }
-
+    if (_onReceive) {
+        _onReceive(_index, _rxPacketLength);
     }
 }
 
@@ -2599,11 +2629,11 @@ void sx128x::updateBitrate() {
         _csma_slot_ms = 10;
 
         float target_preamble_symbols;
-        if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
+        //if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
             target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        } else {
-            target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        }
+        //} else {
+            /*target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
+        }*/
         if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
             target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
         } else {
@@ -2616,7 +2646,7 @@ void sx128x::updateBitrate() {
     }
 }
 
-void sx128x::clearIRQStatus() {
+bool ISR_VECT sx128x::getPacketValidity() {
     uint8_t buf[2];
 
     buf[0] = 0x00;
@@ -2625,4 +2655,10 @@ void sx128x::clearIRQStatus() {
     executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
 
     executeOpcode(OP_CLEAR_IRQ_STATUS_8X, buf, 2);
+
+    if ((buf[1] & IRQ_PAYLOAD_CRC_ERROR_MASK_8X) == 0) {
+        return true;
+    } else {
+        return false;
+    }
 }

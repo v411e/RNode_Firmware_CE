@@ -11,6 +11,7 @@
 #include <SPI.h>
 #include "Interfaces.h"
 #include "Boards.h"
+#include "src/misc/FIFOBuffer.h"
 
 #define MAX_PKT_LENGTH                255
 
@@ -128,7 +129,7 @@ public:
 
     virtual void updateBitrate() = 0;
     virtual void handleDio0Rise() = 0;
-    virtual void clearIRQStatus() = 0;
+    virtual bool getPacketValidity() = 0;
     uint32_t getBitrate() { return _bitrate; };
     uint8_t getIndex() { return _index; };
     void setRadioLock(bool lock) { _radio_locked = lock; };
@@ -333,7 +334,7 @@ protected:
 
 class sx126x : public RadioInterface {
 public:
-  sx126x(uint8_t index, SPIClass spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int
+  sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int
           dio0, int busy, int rxen);
 
   int begin();
@@ -421,11 +422,11 @@ private:
   void reset(void);
   void calibrate(void);
   void calibrate_image(uint32_t frequency);
-  void clearIRQStatus();
+  bool getPacketValidity();
 
 private:
   SPISettings _spiSettings;
-  SPIClass _spiModem;
+  SPIClass* _spiModem;
   int _ss;
   int _sclk;
   int _mosi;
@@ -454,7 +455,7 @@ private:
 
 class sx127x : public RadioInterface {
 public:
-  sx127x(uint8_t index, SPIClass spi, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy);
+  sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy);
 
   int begin();
   void end();
@@ -511,7 +512,7 @@ public:
   void updateBitrate();
 
   void handleDio0Rise();
-  void clearIRQStatus();
+  bool getPacketValidity();
 private:
   void setSyncWord(uint8_t sw);
   void explicitHeaderMode();
@@ -529,7 +530,7 @@ private:
 
 private:
   SPISettings _spiSettings;
-  SPIClass _spiModem;
+  SPIClass* _spiModem;
   int _ss;
   int _sclk;
   int _mosi;
@@ -548,7 +549,7 @@ private:
 
 class sx128x : public RadioInterface {
 public:
-  sx128x(uint8_t index, SPIClass spi, bool tcxo, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen, int txen);
+  sx128x(uint8_t index, SPIClass* spi, bool tcxo, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen, int txen);
 
   int begin();
   void end();
@@ -608,7 +609,8 @@ public:
 
   void handleDio0Rise();
 
-  void clearIRQStatus();
+  bool getPacketValidity();
+
 private:
   void writeBuffer(const uint8_t* buffer, size_t size);
   void readBuffer(uint8_t* buffer, size_t size);
@@ -636,7 +638,7 @@ private:
 
 private:
   SPISettings _spiSettings;
-  SPIClass _spiModem;
+  SPIClass* _spiModem;
   int _ss;
   int _sclk;
   int _mosi;

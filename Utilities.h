@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "Radio.h"
+#include "Radio.hpp"
 #include "Config.h"
 
 // Included for sorting
@@ -142,6 +142,11 @@ uint8_t boot_vector = 0x00;
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
 		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
 		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
+	#elif BOARD_MODEL == BOARD_E22_ESP32
+		void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
+		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
+		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
+		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
 	#elif BOARD_MODEL == BOARD_TBEAM
 		void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
@@ -210,7 +215,12 @@ uint8_t boot_vector = 0x00;
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
 		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
 		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
-    #endif
+	#elif BOARD_MODEL == BOARD_TECHO
+		void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
+		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
+		void led_tx_on()  { digitalWrite(pin_led_tx, HIGH); }
+		void led_tx_off() { digitalWrite(pin_led_tx, LOW); }
+	#endif
 #endif
 
 void hard_reset(void) {
@@ -578,6 +588,18 @@ void serial_write(uint8_t byte) {
 			Serial.write(byte);
 		} else {
 			SerialBT.write(byte);
+
+            #if MCU_VARIANT == MCU_NRF52 && HAS_BLE
+            // This ensures that the TX buffer is flushed after a frame is queued in serial.
+            // serial_in_frame is used to ensure that the flush only happens at the end of the frame
+            if (serial_in_frame && byte == FEND) {
+                SerialBT.flushTXD();
+                serial_in_frame = false;
+            }
+            else if (!serial_in_frame && byte == FEND) {
+                serial_in_frame = true;
+            }
+            #endif
 		}
 	#else
 		Serial.write(byte);
@@ -1100,7 +1122,7 @@ uint8_t getInterfaceCommandByte(uint8_t index) {
     }
 }
 
-uint32_t getQueueSize(uint8_t index) {
+uint16_t getQueueSize(uint8_t index) {
     switch (index) {
         case 0:
             return CONFIG_QUEUE_0_SIZE;
@@ -1148,6 +1170,8 @@ uint32_t getQueueSize(uint8_t index) {
         case 11:
             return CONFIG_QUEUE_11_SIZE;
         #endif
+		default:
+            return CONFIG_QUEUE_0_SIZE;
     }
 }
 
@@ -1322,7 +1346,7 @@ bool eeprom_product_valid() {
 	#if PLATFORM == PLATFORM_ESP32
 	if (rval == PRODUCT_RNODE || rval == BOARD_RNODE_NG_20 || rval == BOARD_RNODE_NG_21 || rval == PRODUCT_HMBRW || rval == PRODUCT_TBEAM || rval == PRODUCT_T32_10 || rval == PRODUCT_T32_20 || rval == PRODUCT_T32_21 || rval == PRODUCT_H32_V2 || rval == PRODUCT_H32_V3) {
 	#elif PLATFORM == PLATFORM_NRF52
-	if (rval == PRODUCT_RAK4631 || rval == PRODUCT_HMBRW || rval == PRODUCT_FREENODE) {
+	if (rval == PRODUCT_TECHO || rval == PRODUCT_RAK4631 || rval == PRODUCT_HMBRW || rval == PRODUCT_FREENODE) {
 	#else
 	if (false) {
 	#endif
@@ -1350,6 +1374,8 @@ bool eeprom_model_valid() {
 	if (model == MODEL_FF || model == MODEL_FE) {
 	#elif BOARD_MODEL == BOARD_TBEAM
 	if (model == MODEL_E4 || model == MODEL_E9 || model == MODEL_E3 || model == MODEL_E8) {
+	#elif BOARD_MODEL == BOARD_TECHO
+	if (model == MODEL_16 || model == MODEL_17) {
 	#elif BOARD_MODEL == BOARD_LORA32_V1_0
 	if (model == MODEL_BA || model == MODEL_BB) {
 	#elif BOARD_MODEL == BOARD_LORA32_V2_0
@@ -1516,168 +1542,4 @@ void unlock_rom() {
 	eeprom_erase();
 }
 
-typedef struct FIFOBuffer
-{
-  unsigned char *begin;
-  unsigned char *end;
-  unsigned char * volatile head;
-  unsigned char * volatile tail;
-} FIFOBuffer;
-
-inline bool fifo_isempty(const FIFOBuffer *f) {
-  return f->head == f->tail;
-}
-
-inline bool fifo_isfull(const FIFOBuffer *f) {
-  return ((f->head == f->begin) && (f->tail == f->end)) || (f->tail == f->head - 1);
-}
-
-inline void fifo_push(FIFOBuffer *f, unsigned char c) {
-  *(f->tail) = c;
-  
-  if (f->tail == f->end) {
-    f->tail = f->begin;
-  } else {
-    f->tail++;
-  }
-}
-
-inline unsigned char fifo_pop(FIFOBuffer *f) {
-  if(f->head == f->end) {
-    f->head = f->begin;
-    return *(f->end);
-  } else {
-    return *(f->head++);
-  }
-}
-
-inline void fifo_flush(FIFOBuffer *f) {
-  f->head = f->tail;
-}
-
-#if MCU_VARIANT != MCU_ESP32 && MCU_VARIANT != MCU_NRF52
-	static inline bool fifo_isempty_locked(const FIFOBuffer *f) {
-	  bool result;
-	  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-	    result = fifo_isempty(f);
-	  }
-	  return result;
-	}
-
-	static inline bool fifo_isfull_locked(const FIFOBuffer *f) {
-	  bool result;
-	  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-	    result = fifo_isfull(f);
-	  }
-	  return result;
-	}
-
-	static inline void fifo_push_locked(FIFOBuffer *f, unsigned char c) {
-	  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-	    fifo_push(f, c);
-	  }
-	}
-#endif
-
-/*
-static inline unsigned char fifo_pop_locked(FIFOBuffer *f) {
-  unsigned char c;
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    c = fifo_pop(f);
-  }
-  return c;
-}
-*/
-
-inline void fifo_init(FIFOBuffer *f, unsigned char *buffer, size_t size) {
-  f->head = f->tail = f->begin = buffer;
-  f->end = buffer + size;
-}
-
-inline size_t fifo_len(FIFOBuffer *f) {
-  return f->end - f->begin;
-}
-
-typedef struct FIFOBuffer16
-{
-  uint16_t *begin;
-  uint16_t *end;
-  uint16_t * volatile head;
-  uint16_t * volatile tail;
-} FIFOBuffer16;
-
-inline bool fifo16_isempty(const FIFOBuffer16 *f) {
-  return f->head == f->tail;
-}
-
-inline bool fifo16_isfull(const FIFOBuffer16 *f) {
-  return ((f->head == f->begin) && (f->tail == f->end)) || (f->tail == f->head - 1);
-}
-
-inline void fifo16_push(FIFOBuffer16 *f, uint16_t c) {
-  *(f->tail) = c;
-
-  if (f->tail == f->end) {
-    f->tail = f->begin;
-  } else {
-    f->tail++;
-  }
-}
-
-inline uint16_t fifo16_pop(FIFOBuffer16 *f) {
-  if(f->head == f->end) {
-    f->head = f->begin;
-    return *(f->end);
-  } else {
-    return *(f->head++);
-  }
-}
-
-inline void fifo16_flush(FIFOBuffer16 *f) {
-  f->head = f->tail;
-}
-
-#if MCU_VARIANT != MCU_ESP32 && MCU_VARIANT != MCU_NRF52
-	static inline bool fifo16_isempty_locked(const FIFOBuffer16 *f) {
-	  bool result;
-	  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-	    result = fifo16_isempty(f);
-	  }
-
-	  return result;
-	}
-#endif
-
-/*
-static inline bool fifo16_isfull_locked(const FIFOBuffer16 *f) {
-  bool result;
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    result = fifo16_isfull(f);
-  }
-  return result;
-}
-
-
-static inline void fifo16_push_locked(FIFOBuffer16 *f, uint16_t c) {
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    fifo16_push(f, c);
-  }
-}
-
-static inline size_t fifo16_pop_locked(FIFOBuffer16 *f) {
-  size_t c;
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    c = fifo16_pop(f);
-  }
-  return c;
-}
-*/
-
-inline void fifo16_init(FIFOBuffer16 *f, uint16_t *buffer, uint16_t size) {
-  f->head = f->tail = f->begin = buffer;
-  f->end = buffer + size;
-}
-
-inline uint16_t fifo16_len(FIFOBuffer16 *f) {
-  return (f->end - f->begin);
-}
+#include "src/misc/FIFOBuffer.h"

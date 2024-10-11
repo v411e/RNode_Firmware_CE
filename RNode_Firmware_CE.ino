@@ -17,10 +17,37 @@
 #include <SPI.h>
 #include "Utilities.h"
 
-#if BOARD_MODEL == BOARD_HELTEC32_V3
-// Default stack size for loop function on Heltec32 V3 is not large enough,
-// must be increased to 11kb to prevent crashes.
-SET_LOOP_TASK_STACK_SIZE(11 * 1024);  // 11KB
+#if MCU_VARIANT == MCU_NRF52
+  #define INTERFACE_SPI
+  #if BOARD_MODEL == BOARD_RAK4631 
+        // Required because on RAK4631, non-default SPI pins must be initialised when class is declared.
+      SPIClass interface_spi[1] = {
+            // SX1262
+            SPIClass(
+                NRF_SPIM2, 
+                interface_pins[0][3], 
+                interface_pins[0][1], 
+                interface_pins[0][2]
+               )
+      };
+  #elif BOARD_MODEL == BOARD_TECHO
+    SPIClass interface_spi[1] = {
+            // SX1262
+            SPIClass(
+                NRF_SPIM3, 
+                interface_pins[0][3], 
+                interface_pins[0][1], 
+                interface_pins[0][2]
+               )
+      };
+  #endif
+#endif
+
+#ifndef INTERFACE_SPI
+// INTERFACE_SPI is only required on NRF52 platforms, as the SPI pins are set in the class constructor and not by a setter method.
+// Even if custom SPI interfaces are not needed, the array must exist to prevent compilation errors.
+#define INTERFACE_SPI
+SPIClass interface_spi[1];
 #endif
 
 FIFOBuffer serialFIFO;
@@ -48,11 +75,6 @@ volatile bool serial_buffering = false;
 #endif
 
 char sbuf[128];
-
-bool packet_ready = false;
-
-volatile bool process_packet = false;
-volatile uint8_t packet_interface = 0;
 
 uint8_t *packet_queue[INTERFACE_COUNT];
 
@@ -120,10 +142,14 @@ void setup() {
   memset(packet_lengths_buf, 0, sizeof(packet_starts_buf));
 
   for (int i = 0; i < INTERFACE_COUNT; i++) {
-      fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH);
-      fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH);
-      packet_queue[i] = (uint8_t*)malloc(getQueueSize(i));
+      fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH+1);
+      fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH+1);
+      packet_queue[i] = (uint8_t*)malloc(getQueueSize(i)+1);
   }
+
+  memset(packet_rdy_interfaces_buf, 0, sizeof(packet_rdy_interfaces_buf));
+
+  fifo_init(&packet_rdy_interfaces, packet_rdy_interfaces_buf, MAX_INTERFACES);
 
   // Create and configure interface objects
   for (uint8_t i = 0; i < INTERFACE_COUNT; i++) {
@@ -134,13 +160,13 @@ void setup() {
               sx126x* obj;
               // if default spi enabled
               if (interface_cfg[i][0]) {
-                obj = new sx126x(i, SPI, interface_cfg[i][1],
+                obj = new sx126x(i, &SPI, interface_cfg[i][1],
                 interface_cfg[i][2], interface_pins[i][0], interface_pins[i][1],
                 interface_pins[i][2], interface_pins[i][3], interface_pins[i][6],
                 interface_pins[i][5], interface_pins[i][4], interface_pins[i][8]);
               }
               else {
-            obj = new sx126x(i, interface_spi[i], interface_cfg[i][1],
+            obj = new sx126x(i, &interface_spi[i], interface_cfg[i][1],
             interface_cfg[i][2], interface_pins[i][0], interface_pins[i][1],
             interface_pins[i][2], interface_pins[i][3], interface_pins[i][6],
             interface_pins[i][5], interface_pins[i][4], interface_pins[i][8]);
@@ -157,12 +183,12 @@ void setup() {
               sx127x* obj;
               // if default spi enabled
               if (interface_cfg[i][0]) {
-            obj = new sx127x(i, SPI, interface_pins[i][0],
+            obj = new sx127x(i, &SPI, interface_pins[i][0],
             interface_pins[i][1], interface_pins[i][2], interface_pins[i][3],
             interface_pins[i][6], interface_pins[i][5], interface_pins[i][4]);
               }
               else {
-            obj = new sx127x(i, interface_spi[i], interface_pins[i][0],
+            obj = new sx127x(i, &interface_spi[i], interface_pins[i][0],
             interface_pins[i][1], interface_pins[i][2], interface_pins[i][3],
             interface_pins[i][6], interface_pins[i][5], interface_pins[i][4]);
               }
@@ -177,13 +203,13 @@ void setup() {
               sx128x* obj;
               // if default spi enabled
               if (interface_cfg[i][0]) {
-            obj = new sx128x(i, SPI, interface_cfg[i][1],
+            obj = new sx128x(i, &SPI, interface_cfg[i][1],
             interface_pins[i][0], interface_pins[i][1], interface_pins[i][2],
             interface_pins[i][3], interface_pins[i][6], interface_pins[i][5],
             interface_pins[i][4], interface_pins[i][8], interface_pins[i][7]);
             }
             else {
-            obj = new sx128x(i, interface_spi[i], interface_cfg[i][1],
+            obj = new sx128x(i, &interface_spi[i], interface_cfg[i][1],
             interface_pins[i][0], interface_pins[i][1], interface_pins[i][2],
             interface_pins[i][3], interface_pins[i][6], interface_pins[i][5],
             interface_pins[i][4], interface_pins[i][8], interface_pins[i][7]);
@@ -315,18 +341,18 @@ inline void getPacketData(RadioInterface* radio, uint16_t len) {
   }
 }
 
-void ISR_VECT receive_callback(uint8_t index, int packet_size) {
+void receive_callback(uint8_t index, int packet_size) {
+        selected_radio = interface_obj[index];
+    bool    ready    = false;
   if (!promisc) {
-    selected_radio = interface_obj[index];
-
     // The standard operating mode allows large
     // packets with a payload up to 500 bytes,
     // by combining two raw LoRa packets.
     // We read the 1-byte header and extract
     // packet sequence number and split flags
+    
     uint8_t header   = selected_radio->read(); packet_size--;
     uint8_t sequence = packetSequence(header);
-    bool    ready    = false;
 
     if (isSplitPacket(header) && seq == SEQ_UNSET) {
       // This is the first part of a split
@@ -345,7 +371,8 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
       getPacketData(selected_radio, packet_size);
 
       seq = SEQ_UNSET;
-      ready = true;
+      packet_interface = index;
+      packet_ready = true;
 
     } else if (isSplitPacket(header) && seq != sequence) {
       // This split packet does not carry the
@@ -370,20 +397,21 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
       }
 
       getPacketData(selected_radio, packet_size);
-      ready = true;
-    }
 
-    if (ready) {
-        packet_ready = true;
-    }  
+      packet_interface = index;
+      packet_ready = true;
+    }
   } else {
     // In promiscuous mode, raw packets are
     // output directly to the host
     read_len = 0;
 
     getPacketData(selected_radio, packet_size);
+
+    packet_interface = index;
     packet_ready = true;
   }
+
   last_rx = millis();
 }
 
@@ -436,6 +464,7 @@ bool startRadio(RadioInterface* radio) {
 void stopRadio(RadioInterface* radio) {
   radio->end();
   sort_interfaces();
+  kiss_indicate_radiostate(radio);
 }
 
 void update_radio_lock(RadioInterface* radio) {
@@ -570,9 +599,9 @@ void serialCallback(uint8_t sbyte) {
 
     if (getInterfaceIndex(command) < INTERFACE_COUNT) {
             uint8_t index = getInterfaceIndex(command);
-        if (!fifo16_isfull(&packet_starts[index]) && queued_bytes[index] < (getQueueSize(index))) {
+        if (!fifo16_isfull(&packet_starts[index]) && (queued_bytes[index] < (getQueueSize(index)))) {
             uint16_t s = current_packet_start[index];
-            int16_t e = queue_cursor[index]-1; if (e == -1) e = (getQueueSize(index))-1;
+            int32_t e = queue_cursor[index]-1; if (e == -1) e = (getQueueSize(index))-1;
             uint16_t l;
 
             if (s != e) {
@@ -697,8 +726,8 @@ void serialCallback(uint8_t sbyte) {
             if (op_mode == MODE_HOST) selected_radio->setSignalBandwidth(bw);
             selected_radio->updateBitrate();
             sort_interfaces();
-            kiss_indicate_phy_stats(selected_radio);
             kiss_indicate_bandwidth(selected_radio);
+            kiss_indicate_phy_stats(selected_radio);
           }
           interface = 0;
         }
@@ -727,8 +756,8 @@ void serialCallback(uint8_t sbyte) {
         if (op_mode == MODE_HOST) selected_radio->setSpreadingFactor(sf);
         selected_radio->updateBitrate();
         sort_interfaces();
-        kiss_indicate_phy_stats(selected_radio);
         kiss_indicate_spreadingfactor(selected_radio);
+        kiss_indicate_phy_stats(selected_radio);
       }
       interface = 0;
     } else if (command == CMD_CR) {
@@ -743,8 +772,8 @@ void serialCallback(uint8_t sbyte) {
         if (op_mode == MODE_HOST) selected_radio->setCodingRate4(cr);
         selected_radio->updateBitrate();
         sort_interfaces();
-        kiss_indicate_phy_stats(selected_radio);
         kiss_indicate_codingrate(selected_radio);
+        kiss_indicate_phy_stats(selected_radio);
       }
       interface = 0;
     } else if (command == CMD_IMPLICIT) {
@@ -765,10 +794,8 @@ void serialCallback(uint8_t sbyte) {
         kiss_indicate_radiostate(selected_radio);
       } else if (sbyte == 0x00) {
         stopRadio(selected_radio);
-        kiss_indicate_radiostate(selected_radio);
       } else if (sbyte == 0x01) {
         startRadio(selected_radio);
-        kiss_indicate_radiostate(selected_radio);
       }
       interface = 0;
     } else if (command == CMD_ST_ALOCK) {
@@ -1086,11 +1113,11 @@ void validate_status() {
         if (eeprom_checksum_valid()) {
           eeprom_ok = true;
           if (modems_installed) {
-              if (device_init()) {
-                hw_ready = true;
-              } else {
-                hw_ready = false;
-              }
+            if (device_init()) {
+              hw_ready = true;
+            } else {
+              hw_ready = false;
+            }
           } else {
             hw_ready = false;
             Serial.write("No valid radio module found\r\n");
@@ -1142,22 +1169,7 @@ void validate_status() {
 }
 
 void loop() {
-      packet_poll();
-
-    bool ready = false;
-    for (int i = 0; i < INTERFACE_COUNT; i++) {
-        selected_radio = interface_obj[i];
-        if (selected_radio->getRadioOnline()) {
-            selected_radio->checkModemStatus();
-            ready = true;
-        }
-    }
-
-
-  // If at least one radio is online then we can continue
-  if (ready) {
-      if (packet_ready) {
-        selected_radio = interface_obj[packet_interface];
+  if (packet_ready) {
         #if MCU_VARIANT == MCU_ESP32
         portENTER_CRITICAL(&update_lock);
         #elif MCU_VARIANT == MCU_NRF52
@@ -1173,8 +1185,20 @@ void loop() {
         kiss_indicate_stat_rssi();
         kiss_indicate_stat_snr();
         kiss_write_packet(packet_interface);
-      }
-        
+  }
+
+    bool ready = false;
+    for (int i = 0; i < INTERFACE_COUNT; i++) {
+        selected_radio = interface_obj[i];
+        if (selected_radio->getRadioOnline()) {
+            selected_radio->checkModemStatus();
+            ready = true;
+        }
+    }
+
+
+  // If at least one radio is online then we can continue
+  if (ready) {
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         selected_radio = interface_obj_sorted[i];
 
@@ -1187,7 +1211,7 @@ void loop() {
         // loop, it still needs to be the first to transmit, so check if this
         // is the case.
         for (int j = 0; j < INTERFACE_COUNT; j++) {
-            if (!interface_obj_sorted[j]->calculateALock() || interface_obj_sorted[j]->getRadioOnline()) {
+            if (!interface_obj_sorted[j]->calculateALock() && interface_obj_sorted[j]->getRadioOnline()) {
                 if (interface_obj_sorted[j]->getBitrate() > selected_radio->getBitrate()) {
                     if (queue_height[interface_obj_sorted[j]->getIndex()] > 0) {
                         selected_radio = interface_obj_sorted[j];
@@ -1197,7 +1221,7 @@ void loop() {
         }
 
         if (queue_height[selected_radio->getIndex()] > 0) {
-            long check_time = millis();
+            uint32_t check_time = millis();
             if (check_time > selected_radio->getPostTxYieldTimeout()) {
                 if (selected_radio->getDCDWaiting() && (check_time >= selected_radio->getDCDWaitUntil())) { selected_radio->setDCDWaiting(false); }
                 if (!selected_radio->getDCDWaiting()) {
@@ -1304,26 +1328,6 @@ void button_event(uint8_t event, unsigned long duration) {
 
 void poll_buffers() {
     process_serial();
-}
-
-void packet_poll() {
-    #if MCU_VARIANT == MCU_ESP32
-    portENTER_CRITICAL(&update_lock);
-    #elif MCU_VARIANT == MCU_NRF52
-    portENTER_CRITICAL();
-    #endif
-    // If we have received a packet on an interface which needs to be processed
-    if (process_packet) {
-        selected_radio = interface_obj[packet_interface];
-        selected_radio->clearIRQStatus();
-        selected_radio->handleDio0Rise();
-        process_packet = false;
-    }
-    #if MCU_VARIANT == MCU_ESP32
-    portEXIT_CRITICAL(&update_lock);
-    #elif MCU_VARIANT == MCU_NRF52
-    portEXIT_CRITICAL();
-    #endif
 }
 
 volatile bool serial_polling = false;

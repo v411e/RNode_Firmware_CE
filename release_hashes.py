@@ -1,4 +1,4 @@
-#!/bin/python
+#!/bin/python3
 
 # Copyright (C) 2023, Mark Qvist
 

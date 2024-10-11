@@ -58,7 +58,7 @@ The RNode Firmware supports all transceiver modules based on the following chips
 * Semtech SX1278
 * Semtech SX1280
 
-These also must have an **SPI interface** and **DIO_0** pin connected to the MCU directly.
+These also must have an **SPI interface** and **DIO_0 (sometimes called DIO_1)** pin connected to the MCU directly.
 
 ## One Tool, Many Uses
 
