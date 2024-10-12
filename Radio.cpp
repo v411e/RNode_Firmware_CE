@@ -2427,7 +2427,7 @@ void sx128x::setTxPower(int level, int outputPin) {
                 break;
         }
 
-        tx_buf[0] = reg_value + 18;
+        tx_buf[0] = reg_value;
         tx_buf[1] = 0xE0; // ramping time - 20 microseconds
     #else
     // For SX1280 boards with no specific PA requirements
