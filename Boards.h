@@ -705,22 +705,11 @@
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
           {
-              true, // DEFAULT_SPI
+              false, // DEFAULT_SPI
               true, // HAS_TCXO
               true  // DIO2_AS_RF_SWITCH
           }, 
       };
-      #elif BOARD_VARIANT == MODEL_A5 // SX1280 with PA 
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
-      const bool interface_cfg[INTERFACE_COUNT][3] = { 
-                    // SX1280
-          {
-              true, // DEFAULT_SPI
-              false, // HAS_TCXO
-              false  // DIO2_AS_RF_SWITCH
-          }, 
-      };
-      #endif
       const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
                   // SX1262
           {
@@ -731,11 +720,37 @@
               34, // pin_busy
               33, // pin_dio
                8, // pin_reset
+              -1, // pin_txen
+              -1, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
+      #elif BOARD_VARIANT == MODEL_A5 // SX1280 with PA 
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1280
+          {
+              false, // DEFAULT_SPI
+              false, // HAS_TCXO
+              false  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1280
+          {
+               7, // pin_ss
+               5, // pin_sclk
+               6, // pin_mosi
+               3, // pin_miso
+              36, // pin_busy
+              9, // pin_dio
+               8, // pin_reset
               10, // pin_txen
               21, // pin_rxen
               -1  // pin_tcxo_enable
           }
       };
+      #endif
 
     #elif BOARD_MODEL == BOARD_E22_ESP32
       #define HAS_DISPLAY true
