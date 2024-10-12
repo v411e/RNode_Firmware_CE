@@ -1058,6 +1058,9 @@ void setTXPower(RadioInterface* radio, int txp) {
     if (model == MODEL_C4) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_C9) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
 
+    if (model == MODEL_C5) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+    if (model == MODEL_CA) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+
     if (model == MODEL_D4) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_D9) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
 
