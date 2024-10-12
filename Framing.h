@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Mark Qvist
+// Copyright (C) 2024, Mark Qvist
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -53,6 +53,8 @@
   #define CMD_FB_READL    0x44
   #define CMD_DISP_INT    0x45
   #define CMD_DISP_ADDR   0x63
+  #define CMD_DISP_BLNK   0x64
+  #define CMD_NP_INT      0x65
   #define CMD_BT_CTRL     0x46
   #define CMD_BT_PIN      0x62
 
@@ -118,6 +120,8 @@
   #define ERROR_TXFAILED      0x02
   #define ERROR_EEPROM_LOCKED 0x03
   #define ERROR_QUEUE_FULL    0x04
+  #define ERROR_MEMORY_LOW    0x05
+  #define ERROR_MODEM_TIMEOUT 0x06
 
   // Serial framing variables
   size_t frame_len;

@@ -1,7 +1,7 @@
 // Copyright (c) Sandeep Mistry. All rights reserved.
 // Licensed under the MIT license.
 
-// Modifications and additions copyright 2023 by Mark Qvist & Jacob Eva
+// Modifications and additions copyright 2024 by Mark Qvist & Jacob Eva
 // Obviously still under the MIT license.
 
 #ifndef RADIO_H
@@ -36,13 +36,15 @@
 #define LORA_PREAMBLE_TARGET_MS   15
 #define LORA_PREAMBLE_FAST_TARGET_MS 1
 #define LORA_FAST_BITRATE_THRESHOLD 40000
+#define CSMA_SLOT_MAX_MS 100
+#define CSMA_SLOT_MIN_MS 24
 
 #define RSSI_OFFSET 157
 
 #define PHY_HEADER_LORA_SYMBOLS 8
 
 #define _e 2.71828183
-#define _S 10.0
+#define _S 12.5
 
 // Status flags
 const uint8_t SIG_DETECT = 0x01;
@@ -71,8 +73,8 @@ public:
      _stat_signal_detected(false), _stat_signal_synced(false),_stat_rx_ongoing(false), _last_dcd(0), 
      _dcd_count(0), _dcd(false), _dcd_led(false),
     _dcd_waiting(false), _dcd_wait_until(0), _dcd_sample(0),
-    _post_tx_yield_timeout(0), _csma_slot_ms(50), _csma_p_min(0.1),
-    _csma_p_max(0.8), _preambleLength(6), _lora_symbol_time_ms(0.0),
+    _post_tx_yield_timeout(0), _csma_slot_ms(50), _csma_p(85), _csma_p_min(0.15),
+    _csma_p_max(0.333), _csma_b_speed(0.15), _preambleLength(6), _lora_symbol_time_ms(0.0),
     _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
      _packet{0}, _onReceive(NULL) {};
     virtual int begin() = 0;
@@ -81,7 +83,7 @@ public:
     virtual int beginPacket(int implicitHeader = false) = 0;
     virtual int endPacket() = 0;
 
-    virtual int packetRssi() = 0;
+    virtual int packetRssi(uint8_t pkt_snr_raw = 0xFF) = 0;
     virtual int currentRssi() = 0;
     virtual uint8_t packetRssiRaw() = 0;
     virtual uint8_t currentRssiRaw() = 0;
@@ -281,8 +283,8 @@ public:
     float getLongtermChannelUtil() { return _longterm_channel_util; };
     float CSMASlope(float u) { return (pow(_e,_S*u-_S/2.0))/(pow(_e,_S*u-_S/2.0)+1.0); };
     void updateCSMAp() {
-      _csma_p = (uint8_t)((1.0-(_csma_p_min+(_csma_p_max-_csma_p_min)*CSMASlope(_airtime)))*255.0);
-    };
+      _csma_p = (uint8_t)((1.0-(_csma_p_min+(_csma_p_max-_csma_p_min)*CSMASlope(_airtime+_csma_b_speed)))*255.0);
+    }
     uint8_t getCSMAp() { return _csma_p; };
     void setCSMASlotMS(int slot_size) { _csma_slot_ms = slot_size; };
     int getCSMASlotMS() { return _csma_slot_ms; };
@@ -323,6 +325,7 @@ protected:
     int _csma_slot_ms;
     float _csma_p_min;
     float _csma_p_max;
+    float _csma_b_speed;
     long _preambleLength;
     float _lora_symbol_time_ms;
     float _lora_symbol_rate;
@@ -343,7 +346,7 @@ public:
   int beginPacket(int implicitHeader = false);
   int endPacket();
 
-  int packetRssi();
+  int packetRssi(uint8_t pkt_snr_raw = 0xFF);
   int currentRssi();
   uint8_t packetRssiRaw();
   uint8_t currentRssiRaw();
@@ -463,7 +466,7 @@ public:
   int beginPacket(int implicitHeader = false);
   int endPacket();
 
-  int packetRssi();
+  int packetRssi(uint8_t pkt_snr_raw = 0xFF);
   int currentRssi();
   uint8_t packetRssiRaw();
   uint8_t currentRssiRaw();
@@ -557,7 +560,7 @@ public:
   int beginPacket(int implicitHeader = false);
   int endPacket();
 
-  int packetRssi();
+  int packetRssi(uint8_t pkt_snr_raw = 0xFF);
   int currentRssi();
   uint8_t packetRssiRaw();
   uint8_t currentRssiRaw();

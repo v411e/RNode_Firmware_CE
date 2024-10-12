@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Mark Qvist
+// Copyright (C) 2024, Mark Qvist
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -74,6 +74,16 @@ volatile bool serial_buffering = false;
   #include "Console.h"
 #endif
 
+#define MODEM_QUEUE_SIZE 4*INTERFACE_COUNT
+typedef struct {
+      size_t len;
+      int rssi;
+      int snr_raw;
+      uint8_t data[];
+      uint8_t interface;
+} modem_packet_t;
+static xQueueHandle modem_packet_queue = NULL;
+
 char sbuf[128];
 
 uint8_t *packet_queue[INTERFACE_COUNT];
@@ -83,6 +93,18 @@ void setup() {
     boot_seq();
     EEPROM.begin(EEPROM_SIZE);
     Serial.setRxBufferSize(CONFIG_UART_BUFFER_SIZE);
+
+    #if BOARD_MODEL == BOARD_TDECK
+      pinMode(pin_poweron, OUTPUT);
+      digitalWrite(pin_poweron, HIGH);
+
+      pinMode(SD_CS, OUTPUT);
+      pinMode(DISPLAY_CS, OUTPUT);
+      digitalWrite(SD_CS, HIGH);
+      digitalWrite(DISPLAY_CS, HIGH);
+
+      pinMode(DISPLAY_BL_PIN, OUTPUT);
+    #endif
   #endif
 
   #if MCU_VARIANT == MCU_NRF52
@@ -109,7 +131,11 @@ void setup() {
 
   Serial.begin(serial_baudrate);
 
-  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TECHO
+  #if HAS_NP
+    led_init();
+  #endif
+
+  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_RNODE_NG_22 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TECHO
   // Some boards need to wait until the hardware UART is set up before booting
   // the full firmware. In the case of the RAK4631/TECHO, the line below will wait
   // until a serial connection is actually established with a master. Thus, it
@@ -141,6 +167,10 @@ void setup() {
   memset(packet_starts_buf, 0, sizeof(packet_starts_buf));
   memset(packet_lengths_buf, 0, sizeof(packet_starts_buf));
 
+  memset(seq, 0xFF, sizeof(seq));
+
+  modem_packet_queue = xQueueCreate(MODEM_QUEUE_SIZE, sizeof(modem_packet_t*));
+
   for (int i = 0; i < INTERFACE_COUNT; i++) {
       fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH+1);
       fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH+1);
@@ -150,6 +180,8 @@ void setup() {
   memset(packet_rdy_interfaces_buf, 0, sizeof(packet_rdy_interfaces_buf));
 
   fifo_init(&packet_rdy_interfaces, packet_rdy_interfaces_buf, MAX_INTERFACES);
+
+  // add call to init_channel_stats here? \todo
 
   // Create and configure interface objects
   for (uint8_t i = 0; i < INTERFACE_COUNT; i++) {
@@ -320,30 +352,75 @@ inline void kiss_write_packet(int index) {
   uint8_t cmd_byte = getInterfaceCommandByte(index);
 
   serial_write(FEND);
-
   // Add index of interface the packet came from
   serial_write(cmd_byte);
 
   for (uint16_t i = 0; i < read_len; i++) {
-    uint8_t byte = pbuf[i];
+    #if MCU_VARIANT == MCU_NRF52
+      portENTER_CRITICAL();
+      uint8_t byte = pbuf[i];
+      portEXIT_CRITICAL();
+    #else
+      uint8_t byte = pbuf[i];
+    #endif
+
     if (byte == FEND) { serial_write(FESC); byte = TFEND; }
     if (byte == FESC) { serial_write(FESC); byte = TFESC; }
     serial_write(byte);
   }
+
   serial_write(FEND);
   read_len = 0;
   packet_ready = false;
+
+  #if MCU_VARIANT == MCU_ESP32 && HAS_BLE
+      bt_flush();
+  #endif
 }
 
 inline void getPacketData(RadioInterface* radio, uint16_t len) {
-  while (len-- && read_len < MTU) {
-    pbuf[read_len++] = radio->read();
-  }
+  #if MCU_VARIANT != MCU_NRF52
+    while (len-- && read_len < MTU) {
+      pbuf[read_len++] = radio->read();
+    }  
+  #else
+    BaseType_t int_mask = taskENTER_CRITICAL_FROM_ISR();
+    while (len-- && read_len < MTU) {
+      pbuf[read_len++] = radio->read();
+    }
+    taskEXIT_CRITICAL_FROM_ISR(int_mask);
+  #endif
 }
 
-void receive_callback(uint8_t index, int packet_size) {
-        selected_radio = interface_obj[index];
+inline bool queuePacket(RadioInterface* radio, uint8_t index) {
+    // Allocate packet struct, but abort if there
+    // is not enough memory available.
+    modem_packet_t *modem_packet = (modem_packet_t*)malloc(sizeof(modem_packet_t) + read_len);
+    if(!modem_packet) { memory_low = true; return false; }
+
+    // Get packet RSSI and SNR
+    modem_packet->snr_raw = radio->packetSnrRaw();
+
+    // Pass raw SNR to get RSSI as SX127X driver requires it for calculations
+    modem_packet->rssi = radio->packetRssi(modem_packet->snr_raw);
+
+    modem_packet->interface = index;
+
+    // Send packet to event queue, but free the
+    // allocated memory again if the queue is
+    // unable to receive the packet.
+    modem_packet->len = read_len;
+    memcpy(modem_packet->data, pbuf, read_len);
+    if (!modem_packet_queue || xQueueSendFromISR(modem_packet_queue, &modem_packet, NULL) != pdPASS) {
+        free(modem_packet);
+    }
+}
+
+void ISR_VECT receive_callback(uint8_t index, int packet_size) {
+    selected_radio = interface_obj[index];
     bool    ready    = false;
+
+  BaseType_t int_mask;
   if (!promisc) {
     // The standard operating mode allows large
     // packets with a payload up to 500 bytes,
@@ -354,33 +431,41 @@ void receive_callback(uint8_t index, int packet_size) {
     uint8_t header   = selected_radio->read(); packet_size--;
     uint8_t sequence = packetSequence(header);
 
-    if (isSplitPacket(header) && seq == SEQ_UNSET) {
+    if (isSplitPacket(header) && seq[index] == SEQ_UNSET) {
       // This is the first part of a split
       // packet, so we set the seq variable
       // and add the data to the buffer
-      read_len = 0;
-      seq = sequence;
+      #if MCU_VARIANT == MCU_NRF52
+        int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
+      #else
+        read_len = 0;
+      #endif
+      
+      seq[index] = sequence;
 
       getPacketData(selected_radio, packet_size);
 
-    } else if (isSplitPacket(header) && seq == sequence) {
+    } else if (isSplitPacket(header) && seq[index] == sequence) {
       // This is the second part of a split
       // packet, so we add it to the buffer
       // and set the ready flag.
       
       getPacketData(selected_radio, packet_size);
 
-      seq = SEQ_UNSET;
-      packet_interface = index;
-      packet_ready = true;
+      seq[index] = SEQ_UNSET;
+      ready = true;
 
-    } else if (isSplitPacket(header) && seq != sequence) {
+    } else if (isSplitPacket(header) && seq[index] != sequence) {
       // This split packet does not carry the
       // same sequence id, so we must assume
       // that we are seeing the first part of
       // a new split packet.
-      read_len = 0;
-      seq = sequence;
+      #if MCU_VARIANT == MCU_NRF52
+        int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
+      #else
+        read_len = 0;
+      #endif
+      seq[index] = sequence;
 
       getPacketData(selected_radio, packet_size);
 
@@ -389,17 +474,20 @@ void receive_callback(uint8_t index, int packet_size) {
       // just read it and set the ready
       // flag to true.
 
-      if (seq != SEQ_UNSET) {
+      if (seq[index] != SEQ_UNSET) {
         // If we already had part of a split
         // packet in the buffer, we clear it.
-        read_len = 0;
-        seq = SEQ_UNSET;
+        #if MCU_VARIANT == MCU_NRF52
+          int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
+        #else
+          read_len = 0;
+        #endif
+        seq[index] = SEQ_UNSET;
       }
 
       getPacketData(selected_radio, packet_size);
 
-      packet_interface = index;
-      packet_ready = true;
+      ready = true;
     }
   } else {
     // In promiscuous mode, raw packets are
@@ -408,8 +496,11 @@ void receive_callback(uint8_t index, int packet_size) {
 
     getPacketData(selected_radio, packet_size);
 
-    packet_interface = index;
-    packet_ready = true;
+    ready = true;
+  }
+
+  if (ready) {
+      queuePacket(selected_radio, index);
   }
 
   last_rx = millis();
@@ -517,6 +608,9 @@ void flushQueue(RadioInterface* radio) {
   queued_bytes[index] = 0;
   selected_radio->updateAirtime();
   queue_flushing = false;
+  #if HAS_DISPLAY
+    display_tx = true;
+  #endif
 }
 
 void transmit(RadioInterface* radio, uint16_t size) {
@@ -548,7 +642,14 @@ void transmit(RadioInterface* radio, uint16_t size) {
         }
       }
 
-      radio->endPacket(); radio->addAirtime(written);
+      if (!radio->endPacket()) {
+        kiss_indicate_error(ERROR_MODEM_TIMEOUT);
+        kiss_indicate_error(ERROR_TXFAILED);
+        led_indicate_error(5);
+        hard_reset();
+      }
+      radio->addAirtime(written);
+
     } else {
       // In promiscuous mode, we only send out
       // plain raw LoRa packets with a maximum
@@ -783,6 +884,7 @@ void serialCallback(uint8_t sbyte) {
       kiss_indicate_implicit_length();
     } else if (command == CMD_LEAVE) {
       if (sbyte == 0xFF) {
+        //display_unblank();
         cable_state   = CABLE_STATE_DISCONNECTED;
         //current_rssi  = -292;
         last_rssi     = -292;
@@ -1024,7 +1126,13 @@ void serialCallback(uint8_t sbyte) {
           bt_start();
           bt_conf_save(true);
         } else if (sbyte == 0x02) {
-          bt_enable_pairing();
+          if (bt_state == BT_STATE_OFF) {
+            bt_start();
+            bt_conf_save(true);
+          }
+          if (bt_state != BT_STATE_CONNECTED) {
+            bt_enable_pairing();
+          }
         }
       #endif
     } else if (command == CMD_DISP_INT) {
@@ -1039,6 +1147,7 @@ void serialCallback(uint8_t sbyte) {
             }
             display_intensity = sbyte;
             di_conf_save(display_intensity);
+            //display_unblank();
         }
 
       #endif
@@ -1054,6 +1163,37 @@ void serialCallback(uint8_t sbyte) {
             }
             display_addr = sbyte;
             da_conf_save(display_addr);
+        }
+
+      #endif
+    } else if (command == CMD_DISP_BLNK) {
+      #if HAS_DISPLAY
+        if (sbyte == FESC) {
+            ESCAPE = true;
+        } else {
+            if (ESCAPE) {
+                if (sbyte == TFEND) sbyte = FEND;
+                if (sbyte == TFESC) sbyte = FESC;
+                ESCAPE = false;
+            }
+            db_conf_save(sbyte);
+            //display_unblank();
+        }
+
+      #endif
+    } else if (command == CMD_NP_INT) {
+      #if HAS_NP
+        if (sbyte == FESC) {
+            ESCAPE = true;
+        } else {
+            if (ESCAPE) {
+                if (sbyte == TFEND) sbyte = FEND;
+                if (sbyte == TFESC) sbyte = FESC;
+                ESCAPE = false;
+            }
+            sbyte;
+            led_set_intensity(sbyte);
+            np_int_conf_save(sbyte);
         }
 
       #endif
@@ -1122,7 +1262,7 @@ void validate_status() {
             }
           } else {
             hw_ready = false;
-            Serial.write("No valid radio module found\r\n");
+            Serial.write("No radio module found\r\n");
             #if HAS_DISPLAY
               if (disp_ready) {
                 device_init_done = true;
@@ -1132,6 +1272,7 @@ void validate_status() {
           }
         } else {
           hw_ready = false;
+          Serial.write("Invalid EEPROM checksum\r\n");
           #if HAS_DISPLAY
             if (disp_ready) {
               device_init_done = true;
@@ -1141,6 +1282,7 @@ void validate_status() {
         }
       } else {
         hw_ready = false;
+        Serial.write("Invalid EEPROM configuration\r\n");
         #if HAS_DISPLAY
           if (disp_ready) {
             device_init_done = true;
@@ -1150,6 +1292,7 @@ void validate_status() {
       }
     } else {
       hw_ready = false;
+      Serial.write("Device unprovisioned, no device configuration found in EEPROM\r\n");
       #if HAS_DISPLAY
         if (disp_ready) {
           device_init_done = true;
@@ -1171,23 +1314,38 @@ void validate_status() {
 }
 
 void loop() {
-  if (packet_ready) {
-        #if MCU_VARIANT == MCU_ESP32
-        portENTER_CRITICAL(&update_lock);
-        #elif MCU_VARIANT == MCU_NRF52
-        portENTER_CRITICAL();
-        #endif
-        last_rssi = selected_radio->packetRssi();
-        last_snr_raw = selected_radio->packetSnrRaw();
-        #if MCU_VARIANT == MCU_ESP32
-        portEXIT_CRITICAL(&update_lock);
-        #elif MCU_VARIANT == MCU_NRF52
-        portEXIT_CRITICAL();
-        #endif
+    #if MCU_VARIANT == MCU_ESP32
+      modem_packet_t *modem_packet = NULL;
+      if(modem_packet_queue && xQueueReceive(modem_packet_queue, &modem_packet, 0) == pdTRUE && modem_packet) {
+        read_len = modem_packet->len;
+        last_rssi = modem_packet->rssi;
+        last_snr_raw = modem_packet->snr_raw;
+        packet_interface = modem_packet->interface;
+        memcpy(&pbuf, modem_packet->data, modem_packet->len);
+        free(modem_packet);
+        modem_packet = NULL;
+
         kiss_indicate_stat_rssi();
         kiss_indicate_stat_snr();
         kiss_write_packet(packet_interface);
-  }
+      }
+
+    #elif MCU_VARIANT == MCU_NRF52
+      modem_packet_t *modem_packet = NULL;
+      if(modem_packet_queue && xQueueReceive(modem_packet_queue, &modem_packet, 0) == pdTRUE && modem_packet) {
+        memcpy(&pbuf, modem_packet->data, modem_packet->len);
+        read_len = modem_packet->len;
+        last_rssi = modem_packet->rssi;
+        last_snr_raw = modem_packet->snr_raw;
+        packet_interface = modem_packet->interface;
+        free(modem_packet);
+        modem_packet = NULL;
+
+        kiss_indicate_stat_rssi();
+        kiss_indicate_stat_snr();
+        kiss_write_packet(packet_interface);
+      }
+    #endif
 
     bool ready = false;
     for (int i = 0; i < INTERFACE_COUNT; i++) {
@@ -1207,19 +1365,6 @@ void loop() {
         if (selected_radio->calculateALock() || !selected_radio->getRadioOnline()) {
             // skip this interface
             continue;
-        }
-
-        // If a higher data rate interface has received a packet after its
-        // loop, it still needs to be the first to transmit, so check if this
-        // is the case.
-        for (int j = 0; j < INTERFACE_COUNT; j++) {
-            if (!interface_obj_sorted[j]->calculateALock() && interface_obj_sorted[j]->getRadioOnline()) {
-                if (interface_obj_sorted[j]->getBitrate() > selected_radio->getBitrate()) {
-                    if (queue_height[interface_obj_sorted[j]->getIndex()] > 0) {
-                        selected_radio = interface_obj_sorted[j];
-                    }
-                }
-            }
         }
 
         if (queue_height[selected_radio->getIndex()] > 0) {
@@ -1300,6 +1445,18 @@ void loop() {
   #if HAS_INPUT
     input_read();
   #endif
+
+  if (memory_low) {
+    #if PLATFORM == PLATFORM_ESP32
+      if (esp_get_free_heap_size() < 8192) {
+        kiss_indicate_error(ERROR_MEMORY_LOW); memory_low = false;
+      } else {
+        memory_low = false;
+      }
+    #else
+      kiss_indicate_error(ERROR_MEMORY_LOW); memory_low = false;
+    #endif
+  }
 }
 
 void process_serial() {
@@ -1317,15 +1474,51 @@ void sleep_now() {
       pinMode(PIN_DISP_SLEEP, OUTPUT);
       digitalWrite(PIN_DISP_SLEEP, DISP_SLEEP_LEVEL);
     #endif
+    #if HAS_BLUETOOTH
+      if (bt_state == BT_STATE_CONNECTED) {
+        bt_stop();
+        delay(100);
+      }
+    #endif
     esp_sleep_enable_ext0_wakeup(PIN_WAKEUP, WAKEUP_LEVEL);
     esp_deep_sleep_start();
   #endif
 }
 
 void button_event(uint8_t event, unsigned long duration) {
-  if (duration > 2000) {
-    sleep_now();
-  }
+    //if (display_blanked) {
+    //  display_unblank();
+    //} else {
+      if (duration > 10000) {
+        #if HAS_CONSOLE
+          #if HAS_BLUETOOTH || HAS_BLE
+            bt_stop();
+          #endif
+          console_active = true;
+          console_start();
+        #endif
+      } else if (duration > 5000) {
+        #if HAS_BLUETOOTH || HAS_BLE
+          if (bt_state != BT_STATE_CONNECTED) { bt_enable_pairing(); }
+        #endif
+      } else if (duration > 700) {
+        #if HAS_SLEEP
+          sleep_now();
+        #endif
+      } else {
+        #if HAS_BLUETOOTH || HAS_BLE
+        if (bt_state != BT_STATE_CONNECTED) {
+          if (bt_state == BT_STATE_OFF) {
+            bt_start();
+            bt_conf_save(true);
+          } else {
+            bt_stop();
+            bt_conf_save(false);
+          }
+        }
+        #endif
+      }
+    //}
 }
 
 void poll_buffers() {

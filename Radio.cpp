@@ -488,34 +488,34 @@ int sx126x::beginPacket(int implicitHeader)
 
 int sx126x::endPacket()
 {
-      setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
+    setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
 
-      // put in single TX mode
-      uint8_t timeout[3] = {0};
-      executeOpcode(OP_TX_6X, timeout, 3);
+    // put in single TX mode
+    uint8_t timeout[3] = {0};
+    executeOpcode(OP_TX_6X, timeout, 3);
 
-      uint8_t buf[2];
+    uint8_t buf[2];
 
-      buf[0] = 0x00;
-      buf[1] = 0x00;
+    buf[0] = 0x00;
+    buf[1] = 0x00;
 
-      executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
+    executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
 
-      // wait for TX done
-      while ((buf[1] & IRQ_TX_DONE_MASK_6X) == 0) {
+    // wait for TX done
+    while ((buf[1] & IRQ_TX_DONE_MASK_6X) == 0) {
         buf[0] = 0x00;
         buf[1] = 0x00;
         executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
         yield();
-      }
+    }
 
-      // clear IRQ's
+    // clear IRQ's
 
-      uint8_t mask[2];
-      mask[0] = 0x00;
-      mask[1] = IRQ_TX_DONE_MASK_6X;
-      executeOpcode(OP_CLEAR_IRQ_STATUS_6X, mask, 2);
-  return 1;
+    uint8_t mask[2];
+    mask[0] = 0x00;
+    mask[1] = IRQ_TX_DONE_MASK_6X;
+    executeOpcode(OP_CLEAR_IRQ_STATUS_6X, mask, 2);
+    return 1;
 }
 
 uint8_t sx126x::modemStatus() {
@@ -561,7 +561,7 @@ uint8_t sx126x::packetRssiRaw() {
     return buf[2];
 }
 
-int ISR_VECT sx126x::packetRssi() {
+int ISR_VECT sx126x::packetRssi(uint8_t pkt_snr_raw) {
     // may need more calculations here
     uint8_t buf[3] = {0};
     executeOpcodeRead(OP_PACKET_STATUS_6X, buf, 3);
@@ -747,6 +747,10 @@ void sx126x::enableTCXO() {
     #elif BOARD_MODEL == BOARD_TECHO
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_T3S3
+      uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
+    #elif BOARD_MODEL == BOARD_TDECK
+      uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
+    #elif BOARD_MODEL == BOARD_TBEAM_S_V1
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #else
       uint8_t buf[4] = {0};
@@ -995,7 +999,9 @@ void sx126x::updateBitrate() {
         _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
         _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
         _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        //_csma_slot_ms = _lora_symbol_time_ms*10;
+        _csma_slot_ms = _lora_symbol_time_ms*12;
+        if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
+        if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
         float target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
         if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
             target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
@@ -1246,22 +1252,26 @@ uint8_t sx127x::packetRssiRaw() {
     return pkt_rssi_value;
 }
 
-int ISR_VECT sx127x::packetRssi() {
-    int pkt_rssi = (int)readRegister(REG_PKT_RSSI_VALUE_7X) - RSSI_OFFSET;
-    int pkt_snr = packetSnr();
-
-    if (_frequency < 820E6) pkt_rssi -= 7;
-
-    if (pkt_snr < 0) {
-        pkt_rssi += pkt_snr;
-    } else {
-        // Slope correction is (16/15)*pkt_rssi,
-        // this estimation looses one floating point
-        // operation, and should be precise enough.
-        pkt_rssi = (int)(1.066 * pkt_rssi);
-    }
-    return pkt_rssi;
+int ISR_VECT sx127x::packetRssi(uint8_t pkt_snr_raw) {
+  int pkt_rssi = (int)readRegister(REG_PKT_RSSI_VALUE_7X) - RSSI_OFFSET;
+  int pkt_snr;
+  if (pkt_snr_raw == 0xFF) {
+      pkt_snr = packetSnr();
+  } else {
+      pkt_snr = ((int8_t)pkt_snr_raw)*0.25;
+  }
+  if (_frequency < 820E6) pkt_rssi -= 7;
+  if (pkt_snr < 0) {
+      pkt_rssi += pkt_snr;
+  } else {
+      // Slope correction is (16/15)*pkt_rssi,
+      // this estimation looses one floating point
+      // operation, and should be precise enough.
+      pkt_rssi = (int)(1.066 * pkt_rssi);
+  }
+  return pkt_rssi;
 }
+
 
 uint8_t ISR_VECT sx127x::packetSnrRaw() {
     return readRegister(REG_PKT_SNR_VALUE_7X);
@@ -1531,7 +1541,9 @@ void sx127x::updateBitrate() {
         _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
         _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
         _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        //_csma_slot_ms = _lora_symbol_time_ms*10;
+        _csma_slot_ms = _lora_symbol_time_ms*12;
+        if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
+        if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
         float target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
         if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
             target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
@@ -2028,7 +2040,7 @@ uint8_t sx128x::packetRssiRaw() {
     return buf[0];
 }
 
-int ISR_VECT sx128x::packetRssi() {
+int ISR_VECT sx128x::packetRssi(uint8_t pkt_snr_raw) {
     // may need more calculations here
     uint8_t buf[5] = {0};
     executeOpcodeRead(OP_PACKET_STATUS_8X, buf, 5);
@@ -2626,7 +2638,9 @@ void sx128x::updateBitrate() {
         _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
         _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
         _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        _csma_slot_ms = 10;
+        _csma_slot_ms = _lora_symbol_time_ms*12;
+        if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
+        if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
 
         float target_preamble_symbols;
         //if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {

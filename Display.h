@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Mark Qvist
+// Copyright (C) 2024, Mark Qvist
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,16 +13,31 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 #include <Adafruit_GFX.h>
 
 #if DISPLAY == OLED
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
-#define DISP_W 128
-#define DISP_H 64
 #define DISPLAY_BLACK SSD1306_BLACK
 #define DISPLAY_WHITE SSD1306_WHITE
+
+#if BOARD_MODEL == BOARD_TDECK
+  #include <Adafruit_ST7789.h>
+  #define DISPLAY_BLACK ST77XX_BLACK
+  #define DISPLAY_WHITE ST77XX_WHITE
+#elif BOARD_MODEL == BOARD_TBEAM_S_V1
+  #include <Adafruit_SH110X.h>
+  #define DISPLAY_BLACK ST77XX_BLACK
+  #define DISPLAY_WHITE ST77XX_WHITE
+#else
+  #include <Wire.h>
+  #include <Adafruit_SSD1306.h>
+#endif
+
+#include "Fonts/Org_01.h"
+
+#define DISP_W 128
+#define DISP_H 64
 #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
 void (*display_callback)();
 void display_add_callback(void (*callback)()) {
@@ -81,6 +96,11 @@ void busyCallback(const void* p) {
   #endif
 #elif BOARD_MODEL == BOARD_RAK4631
   #if DISPLAY == OLED
+  // RAK1921/SSD1306
+  #define DISP_RST -1
+  #define DISP_ADDR 0x3C
+  #define SCL_OLED 14
+  #define SDA_OLED 13
   // todo: add support for OLED board
   #elif DISPLAY == EINK_BW
   // todo: change this to be defined in Boards.h in the future
@@ -99,6 +119,12 @@ void busyCallback(const void* p) {
   #define DISP_W 128
   #define DISP_H 64
   #define DISP_ADDR -1
+#elif BOARD_MODEL == BOARD_TBEAM_S_V1
+  #define DISP_RST -1
+  #define DISP_ADDR 0x3C
+  #define SCL_OLED 18
+  #define SDA_OLED 17
+  #define DISP_CUSTOM_ADDR false
 #else
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
@@ -128,7 +154,13 @@ uint32_t last_epd_refresh = 0;
 #define REFRESH_PERIOD 300000 // 5 minutes in ms
 #else
   #if DISPLAY == OLED
-  Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
+  #if BOARD_MODEL == BOARD_TDECK
+    Adafruit_ST7789 display = Adafruit_ST7789(DISPLAY_CS, DISPLAY_DC, -1);
+  #elif BOARD_MODEL == BOARD_TBEAM_S_V1
+    Adafruit_SH1106G display = Adafruit_SH1106G(DISP_W, DISP_H, &Wire, -1);
+  #else
+    Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
+  #endif
   float disp_target_fps = 7;
   #define SCREENSAVER_TIME 500 // ms
   uint32_t last_screensaver = 0;
@@ -141,10 +173,12 @@ uint32_t last_epd_refresh = 0;
 #define DISP_MODE_LANDSCAPE 0x01
 #define DISP_MODE_PORTRAIT  0x02
 #define DISP_PIN_SIZE   6
+#define DISPLAY_BLANKING_TIMEOUT 15*1000
 uint8_t disp_mode = DISP_MODE_UNKNOWN;
 uint8_t disp_ext_fb = false;
 unsigned char fb[512];
 uint32_t last_disp_update = 0;
+bool display_tx = false;
 int disp_update_interval = 1000/disp_target_fps;
 
 uint32_t last_page_flip = 0;
@@ -171,7 +205,6 @@ uint8_t online_interfaces = 0;
 #define WATERFALL_SIZE 92
 #else
 #define WATERFALL_SIZE int(DISP_H * 0.75) // default to 75% of the display height
-// add more eink compatible boards here
 #endif
 
 int waterfall[INTERFACE_COUNT][WATERFALL_SIZE] = {0};
@@ -206,10 +239,40 @@ void update_area_positions() {
 
 uint8_t display_contrast = 0x00;
 #if DISPLAY == OLED
-void set_contrast(Adafruit_SSD1306 *display, uint8_t contrast) {
+#if BOARD_MODEL == BOARD_TBEAM_S_V1
+void set_contrast(Adafruit_SH1106G *display, uint8_t value) {
+}
+#elif BOARD_MODEL == BOARD_TDECK
+void set_contrast(Adafruit_ST7789 *display, uint8_t value) {
+static uint8_t level = 0;
+static uint8_t steps = 16;
+if (value > 15) value = 15;
+if (value == 0) {
+    digitalWrite(DISPLAY_BL_PIN, 0);
+    delay(3);
+    level = 0;
+    return;
+}
+if (level == 0) {
+    digitalWrite(DISPLAY_BL_PIN, 1);
+    level = steps;
+    delayMicroseconds(30);
+}
+int from = steps - level;
+int to = steps - value;
+int num = (steps + to - from) % steps;
+for (int i = 0; i < num; i++) {
+    digitalWrite(DISPLAY_BL_PIN, 0);
+    digitalWrite(DISPLAY_BL_PIN, 1);
+}
+level = value;
+}
+#else
+  void set_contrast(Adafruit_SSD1306 *display, uint8_t contrast) {
     display->ssd1306_command(SSD1306_SETCONTRAST);
     display->ssd1306_command(contrast);
-}
+  }
+#endif
 #endif
 
 bool display_init() {
@@ -267,6 +330,8 @@ bool display_init() {
       // check for any commands from the host.
       display.epd2.setBusyCallback(busyCallback);
       #endif
+    #elif BOARD_MODEL == BOARD_TBEAM_S_V1
+      Wire.begin(SDA_OLED, SCL_OLED);
     #endif
 
     #if DISP_CUSTOM_ADDR == true
@@ -280,12 +345,17 @@ bool display_init() {
       uint8_t display_address = DISP_ADDR;
     #endif
 
-
-    #if DISPLAY == OLED
-    if(!display.begin(SSD1306_SWITCHCAPVCC, display_address)) {
-    #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
+    #if DISPLAY == EINK_BW || DISPLAY == EINK_3C
     // don't check if display is actually connected
     if(false) {
+    #elif BOARD_MODEL == BOARD_TDECK
+    display.init(240, 320);
+    display.setSPISpeed(80e6);
+    if (false) {
+    #elif BOARD_MODEL == BOARD_TBEAM_S_V1
+    if (!display.begin(display_address, true)) {
+    #else
+    if (!display.begin(SSD1306_SWITCHCAPVCC, display_address)) {
     #endif
       return false;
     } else {
@@ -310,6 +380,9 @@ bool display_init() {
       #elif BOARD_MODEL == BOARD_TBEAM
         disp_mode = DISP_MODE_LANDSCAPE;
         display.setRotation(0);
+      #elif BOARD_MODEL == BOARD_TBEAM_S_V1
+        disp_mode = DISP_MODE_PORTRAIT;
+        display.setRotation(1);
       #elif BOARD_MODEL == BOARD_HELTEC32_V2
         disp_mode = DISP_MODE_PORTRAIT;
         display.setRotation(1);
@@ -323,10 +396,13 @@ bool display_init() {
         display.setRotation(3);
       #elif BOARD_MODEL == BOARD_HELTEC32_V3
         disp_mode = DISP_MODE_PORTRAIT;
-        // Antenna conx up
         display.setRotation(1);
-        // USB-C up
-        // display.setRotation(3);
+      #elif BOARD_MODEL == BOARD_RAK4631
+        disp_mode = DISP_MODE_LANDSCAPE;
+        display.setRotation(0);
+      #elif BOARD_MODEL == BOARD_TDECK
+        disp_mode = DISP_MODE_PORTRAIT;
+        display.setRotation(3);
       #else
         disp_mode = DISP_MODE_PORTRAIT;
         display.setRotation(3);
@@ -340,10 +416,14 @@ bool display_init() {
       disp_area.cp437(true);
       display.cp437(true);
 
-      #if HAS_EEPROM
-      display_intensity = EEPROM.read(eeprom_addr(ADDR_CONF_DINT));
-      #elif MCU_VARIANT == MCU_NRF52
-      display_intensity = eeprom_read(eeprom_addr(ADDR_CONF_DINT));
+      #if MCU_VARIANT != MCU_NRF52
+        display_intensity = EEPROM.read(eeprom_addr(ADDR_CONF_DINT));
+      #else
+        display_intensity = eeprom_read(eeprom_addr(ADDR_CONF_DINT));
+      #endif
+
+      #if BOARD_MODEL == BOARD_TDECK
+        display.fillScreen(DISPLAY_BLACK);
       #endif
 
       return true;
@@ -469,15 +549,23 @@ void draw_battery_bars(int px, int py) {
   if (pmu_ready) {
     if (battery_ready) {
       if (battery_installed) {
-      float battery_value = battery_percent;
+        float battery_value = battery_percent;
+
+        // Disable charging state display for now, since
+        // boards without dedicated PMU are completely
+        // unreliable for determining actual charging state.
+        bool disable_charge_status = false;
+        if (battery_indeterminate && battery_state == BATTERY_STATE_CHARGING) {
+          disable_charge_status = true;
+        }
         
-        if (battery_state == BATTERY_STATE_CHARGING) {
+        if (battery_state == BATTERY_STATE_CHARGING && !disable_charge_status) {
           battery_value = charge_tick;
           charge_tick += 3;
           if (charge_tick > 100) charge_tick = 0;
         }
 
-        if (battery_indeterminate && battery_state == BATTERY_STATE_CHARGING) {
+        if (battery_indeterminate && battery_state == BATTERY_STATE_CHARGING && !disable_charge_status) {
           #if DISP_H == 122
               stat_area.fillRect(px-2, py-2, 24, 9, DISPLAY_BLACK);
               stat_area.drawBitmap(px-2, py-5, bm_plug, 34, 13, DISPLAY_WHITE, DISPLAY_BLACK);
@@ -551,113 +639,115 @@ void draw_battery_bars(int px, int py) {
 #define Q_SNR_MAX 6.0
 
 void draw_quality_bars(int px, int py) {
-  signed char t_snr = (signed int)last_snr_raw;
-  int snr_int = (int)t_snr;
-  float snr_min = Q_SNR_MIN_BASE-(int)interface_obj[interface_page]->getSpreadingFactor()*Q_SNR_STEP;
-  float snr_span = (Q_SNR_MAX-snr_min);
-  float snr = ((int)snr_int) * 0.25;
-  float quality = ((snr-snr_min)/(snr_span))*100;
-  if (quality > 100.0) quality = 100.0;
-  if (quality < 0.0) quality = 0.0;
+    signed char t_snr = (signed int)last_snr_raw;
+    int snr_int = (int)t_snr;
+    float snr_min = Q_SNR_MIN_BASE-(int)interface_obj[interface_page]->getSpreadingFactor()*Q_SNR_STEP;
+    float snr_span = (Q_SNR_MAX-snr_min);
+    float snr = ((int)snr_int) * 0.25;
+    float quality = ((snr-snr_min)/(snr_span))*100;
+    if (quality > 100.0) quality = 100.0;
+    if (quality < 0.0) quality = 0.0;
 
-  #if DISP_H == 122
-  stat_area.fillRect(px, py, 26, 14, DISPLAY_BLACK);
-  if (quality > 0) {
-      stat_area.drawLine(px+0*4, py+14, px+0*4, py+6, DISPLAY_WHITE);
-      stat_area.drawLine(px+0*4+1, py+14, px+0*4+1, py+6, DISPLAY_WHITE);
-  }
-  if (quality > 15) {
-      stat_area.drawLine(px+1*4, py+14, px+1*4, py+5, DISPLAY_WHITE);
-      stat_area.drawLine(px+1*4+1, py+14, px+1*4+1, py+5, DISPLAY_WHITE);
-  }
-  if (quality > 30) {
-      stat_area.drawLine(px+2*4, py+14, px+2*4, py+4, DISPLAY_WHITE);
-      stat_area.drawLine(px+2*4+1, py+14, px+2*4+1, py+4, DISPLAY_WHITE);
-  }
-  if (quality > 45) {
-      stat_area.drawLine(px+3*4, py+14, px+3*4, py+3, DISPLAY_WHITE);
-      stat_area.drawLine(px+3*4+1, py+14, px+3*4+1, py+3, DISPLAY_WHITE);
-  }
-  if (quality > 60) {
-      stat_area.drawLine(px+4*4, py+14, px+4*4, py+2, DISPLAY_WHITE);
-      stat_area.drawLine(px+4*4+1, py+14, px+4*4+1, py+2, DISPLAY_WHITE);
-  }
-  if (quality > 75) {
-      stat_area.drawLine(px+5*4, py+14, px+5*4, py+1, DISPLAY_WHITE);
-      stat_area.drawLine(px+5*4+1, py+14, px+5*4+1, py+1, DISPLAY_WHITE);
-  }
-  if (quality > 90) {
-      stat_area.drawLine(px+6*4, py+14, px+6*4, py+0, DISPLAY_WHITE);
-      stat_area.drawLine(px+6*4+1, py+14, px+6*4+1, py+0, DISPLAY_WHITE);
-  }
-  #else
-  stat_area.fillRect(px, py, 13, 7, DISPLAY_BLACK);
-  if (quality > 0)  stat_area.drawLine(px+0*2, py+7, px+0*2, py+6, DISPLAY_WHITE);
-  if (quality > 15) stat_area.drawLine(px+1*2, py+7, px+1*2, py+5, DISPLAY_WHITE);
-  if (quality > 30) stat_area.drawLine(px+2*2, py+7, px+2*2, py+4, DISPLAY_WHITE);
-  if (quality > 45) stat_area.drawLine(px+3*2, py+7, px+3*2, py+3, DISPLAY_WHITE);
-  if (quality > 60) stat_area.drawLine(px+4*2, py+7, px+4*2, py+2, DISPLAY_WHITE);
-  if (quality > 75) stat_area.drawLine(px+5*2, py+7, px+5*2, py+1, DISPLAY_WHITE);
-  if (quality > 90) stat_area.drawLine(px+6*2, py+7, px+6*2, py+0, DISPLAY_WHITE);
-  #endif
-  // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
+#if DISP_H == 122
+    stat_area.fillRect(px, py, 26, 14, DISPLAY_BLACK);
+    if (quality > 0) {
+        stat_area.drawLine(px+0*4, py+14, px+0*4, py+6, DISPLAY_WHITE);
+        stat_area.drawLine(px+0*4+1, py+14, px+0*4+1, py+6, DISPLAY_WHITE);
+    }
+    if (quality > 15) {
+        stat_area.drawLine(px+1*4, py+14, px+1*4, py+5, DISPLAY_WHITE);
+        stat_area.drawLine(px+1*4+1, py+14, px+1*4+1, py+5, DISPLAY_WHITE);
+    }
+    if (quality > 30) {
+        stat_area.drawLine(px+2*4, py+14, px+2*4, py+4, DISPLAY_WHITE);
+        stat_area.drawLine(px+2*4+1, py+14, px+2*4+1, py+4, DISPLAY_WHITE);
+    }
+    if (quality > 45) {
+        stat_area.drawLine(px+3*4, py+14, px+3*4, py+3, DISPLAY_WHITE);
+        stat_area.drawLine(px+3*4+1, py+14, px+3*4+1, py+3, DISPLAY_WHITE);
+    }
+    if (quality > 60) {
+        stat_area.drawLine(px+4*4, py+14, px+4*4, py+2, DISPLAY_WHITE);
+        stat_area.drawLine(px+4*4+1, py+14, px+4*4+1, py+2, DISPLAY_WHITE);
+    }
+    if (quality > 75) {
+        stat_area.drawLine(px+5*4, py+14, px+5*4, py+1, DISPLAY_WHITE);
+        stat_area.drawLine(px+5*4+1, py+14, px+5*4+1, py+1, DISPLAY_WHITE);
+    }
+    if (quality > 90) {
+        stat_area.drawLine(px+6*4, py+14, px+6*4, py+0, DISPLAY_WHITE);
+        stat_area.drawLine(px+6*4+1, py+14, px+6*4+1, py+0, DISPLAY_WHITE);
+    }
+#else
+    stat_area.fillRect(px, py, 13, 7, DISPLAY_BLACK);
+    if (quality > 0)  stat_area.drawLine(px+0*2, py+7, px+0*2, py+6, DISPLAY_WHITE);
+    if (quality > 15) stat_area.drawLine(px+1*2, py+7, px+1*2, py+5, DISPLAY_WHITE);
+    if (quality > 30) stat_area.drawLine(px+2*2, py+7, px+2*2, py+4, DISPLAY_WHITE);
+    if (quality > 45) stat_area.drawLine(px+3*2, py+7, px+3*2, py+3, DISPLAY_WHITE);
+    if (quality > 60) stat_area.drawLine(px+4*2, py+7, px+4*2, py+2, DISPLAY_WHITE);
+    if (quality > 75) stat_area.drawLine(px+5*2, py+7, px+5*2, py+1, DISPLAY_WHITE);
+    if (quality > 90) stat_area.drawLine(px+6*2, py+7, px+6*2, py+0, DISPLAY_WHITE);
+#endif
+    // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
 }
 
 #define S_RSSI_MIN -135.0
 #define S_RSSI_MAX -75.0
 #define S_RSSI_SPAN (S_RSSI_MAX-S_RSSI_MIN)
 void draw_signal_bars(int px, int py) {
-  int rssi_val = last_rssi;
-  if (rssi_val < S_RSSI_MIN) rssi_val = S_RSSI_MIN;
-  if (rssi_val > S_RSSI_MAX) rssi_val = S_RSSI_MAX;
-  int signal = ((rssi_val - S_RSSI_MIN)*(1.0/S_RSSI_SPAN))*100.0;
+    int rssi_val = last_rssi;
+    if (rssi_val < S_RSSI_MIN) rssi_val = S_RSSI_MIN;
+    if (rssi_val > S_RSSI_MAX) rssi_val = S_RSSI_MAX;
+    int signal = ((rssi_val - S_RSSI_MIN)*(1.0/S_RSSI_SPAN))*100.0;
 
-  if (signal > 100.0) signal = 100.0;
-  if (signal < 0.0) signal = 0.0;
+    if (signal > 100.0) signal = 100.0;
+    if (signal < 0.0) signal = 0.0;
 
-  #if DISP_H == 122
-  stat_area.fillRect(px, py, 26, 14, DISPLAY_BLACK);
-  if (signal > 85) {
-      stat_area.drawLine(px+0*4, py+14, px+0*4, py+0, DISPLAY_WHITE);
-      stat_area.drawLine(px+0*4+1, py+14, px+0*4+1, py+0, DISPLAY_WHITE);
-  }
-  if (signal > 72) {
-      stat_area.drawLine(px+1*4, py+14, px+1*4, py+1, DISPLAY_WHITE);
-      stat_area.drawLine(px+1*4+1, py+14, px+1*4+1, py+1, DISPLAY_WHITE);
-  }
-  if (signal > 59) {
-      stat_area.drawLine(px+2*4, py+14, px+2*4, py+2, DISPLAY_WHITE);
-      stat_area.drawLine(px+2*4+1, py+14, px+2*4+1, py+2, DISPLAY_WHITE);
-  }
-  if (signal > 46) {
-      stat_area.drawLine(px+3*4, py+14, px+3*4, py+3, DISPLAY_WHITE);
-      stat_area.drawLine(px+3*4+1, py+14, px+3*4+1, py+3, DISPLAY_WHITE);
-  }
-  if (signal > 33) {
-      stat_area.drawLine(px+4*4, py+14, px+4*4, py+4, DISPLAY_WHITE);
-      stat_area.drawLine(px+4*4+1, py+14, px+4*4+1, py+4, DISPLAY_WHITE);
-  }
-  if (signal > 20) {
-      stat_area.drawLine(px+5*4, py+14, px+5*4, py+5, DISPLAY_WHITE);
-      stat_area.drawLine(px+5*4+1, py+14, px+5*4+1, py+5, DISPLAY_WHITE);
-  }
-  if (signal > 7)  {
-      stat_area.drawLine(px+6*4, py+14, px+6*4, py+6, DISPLAY_WHITE);
-      stat_area.drawLine(px+6*4+1, py+14, px+6*4+1, py+6, DISPLAY_WHITE);
-  }
-  #else
-  stat_area.fillRect(px, py, 13, 7, DISPLAY_BLACK);
-  if (signal > 85) stat_area.drawLine(px+0*2, py+7, px+0*2, py+0, DISPLAY_WHITE);
-  if (signal > 72) stat_area.drawLine(px+1*2, py+7, px+1*2, py+1, DISPLAY_WHITE);
-  if (signal > 59) stat_area.drawLine(px+2*2, py+7, px+2*2, py+2, DISPLAY_WHITE);
-  if (signal > 46) stat_area.drawLine(px+3*2, py+7, px+3*2, py+3, DISPLAY_WHITE);
-  if (signal > 33) stat_area.drawLine(px+4*2, py+7, px+4*2, py+4, DISPLAY_WHITE);
-  if (signal > 20) stat_area.drawLine(px+5*2, py+7, px+5*2, py+5, DISPLAY_WHITE);
-  if (signal > 7)  stat_area.drawLine(px+6*2, py+7, px+6*2, py+6, DISPLAY_WHITE);
-  #endif
-  // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
+#if DISP_H == 122
+    stat_area.fillRect(px, py, 26, 14, DISPLAY_BLACK);
+    if (signal > 85) {
+        stat_area.drawLine(px+0*4, py+14, px+0*4, py+0, DISPLAY_WHITE);
+        stat_area.drawLine(px+0*4+1, py+14, px+0*4+1, py+0, DISPLAY_WHITE);
+    }
+    if (signal > 72) {
+        stat_area.drawLine(px+1*4, py+14, px+1*4, py+1, DISPLAY_WHITE);
+        stat_area.drawLine(px+1*4+1, py+14, px+1*4+1, py+1, DISPLAY_WHITE);
+    }
+    if (signal > 59) {
+        stat_area.drawLine(px+2*4, py+14, px+2*4, py+2, DISPLAY_WHITE);
+        stat_area.drawLine(px+2*4+1, py+14, px+2*4+1, py+2, DISPLAY_WHITE);
+    }
+    if (signal > 46) {
+        stat_area.drawLine(px+3*4, py+14, px+3*4, py+3, DISPLAY_WHITE);
+        stat_area.drawLine(px+3*4+1, py+14, px+3*4+1, py+3, DISPLAY_WHITE);
+    }
+    if (signal > 33) {
+        stat_area.drawLine(px+4*4, py+14, px+4*4, py+4, DISPLAY_WHITE);
+        stat_area.drawLine(px+4*4+1, py+14, px+4*4+1, py+4, DISPLAY_WHITE);
+    }
+    if (signal > 20) {
+        stat_area.drawLine(px+5*4, py+14, px+5*4, py+5, DISPLAY_WHITE);
+        stat_area.drawLine(px+5*4+1, py+14, px+5*4+1, py+5, DISPLAY_WHITE);
+    }
+    if (signal > 7)  {
+        stat_area.drawLine(px+6*4, py+14, px+6*4, py+6, DISPLAY_WHITE);
+        stat_area.drawLine(px+6*4+1, py+14, px+6*4+1, py+6, DISPLAY_WHITE);
+    }
+#else
+    stat_area.fillRect(px, py, 13, 7, DISPLAY_BLACK);
+    if (signal > 85) stat_area.drawLine(px+0*2, py+7, px+0*2, py+0, DISPLAY_WHITE);
+    if (signal > 72) stat_area.drawLine(px+1*2, py+7, px+1*2, py+1, DISPLAY_WHITE);
+    if (signal > 59) stat_area.drawLine(px+2*2, py+7, px+2*2, py+2, DISPLAY_WHITE);
+    if (signal > 46) stat_area.drawLine(px+3*2, py+7, px+3*2, py+3, DISPLAY_WHITE);
+    if (signal > 33) stat_area.drawLine(px+4*2, py+7, px+4*2, py+4, DISPLAY_WHITE);
+    if (signal > 20) stat_area.drawLine(px+5*2, py+7, px+5*2, py+5, DISPLAY_WHITE);
+    if (signal > 7)  stat_area.drawLine(px+6*2, py+7, px+6*2, py+6, DISPLAY_WHITE);
+#endif
+    // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
 }
 
+#define WF_TX_SIZE 5
+#define WF_TX_WIDTH 5
 #define WF_RSSI_MAX -60
 #define WF_RSSI_MIN -135
 #define WF_RSSI_SPAN (WF_RSSI_MAX - WF_RSSI_MIN)
@@ -673,9 +763,16 @@ void draw_waterfall(int px, int py) {
   if (rssi_val < WF_RSSI_MIN) rssi_val = WF_RSSI_MIN;
   if (rssi_val > WF_RSSI_MAX) rssi_val = WF_RSSI_MAX;
   int rssi_normalised = ((rssi_val - WF_RSSI_MIN)*(1.0/WF_RSSI_SPAN))*WF_PIXEL_WIDTH;
-
-  waterfall[interface_page][waterfall_head[interface_page]++] = rssi_normalised;
-  if (waterfall_head[interface_page] >= WATERFALL_SIZE) waterfall_head[interface_page] = 0;
+  if (display_tx) {
+    for (uint8_t i; i < WF_TX_SIZE; i++) {
+      waterfall[interface_page][waterfall_head[interface_page]++] = -1;
+      if (waterfall_head[interface_page] >= WATERFALL_SIZE) waterfall_head[interface_page] = 0;
+    }
+    display_tx = false;
+  } else {
+    waterfall[interface_page][waterfall_head[interface_page]++] = rssi_normalised;
+    if (waterfall_head[interface_page] >= WATERFALL_SIZE) waterfall_head[interface_page] = 0;
+  }
 
   stat_area.fillRect(px,py,WF_PIXEL_WIDTH, WATERFALL_SIZE, DISPLAY_BLACK);
   for (int i = 0; i < WATERFALL_SIZE; i++){
@@ -683,6 +780,11 @@ void draw_waterfall(int px, int py) {
     int ws = waterfall[interface_page][wi];
     if (ws > 0) {
       stat_area.drawLine(px, py+i, px+ws-1, py+i, DISPLAY_WHITE);
+    } else if (ws == -1) {
+      uint8_t o = i%2;
+      for (uint8_t ti = 0; ti < WF_PIXEL_WIDTH/2; ti++) {
+        stat_area.drawPixel(px+ti*2+o, py+i, DISPLAY_WHITE);
+      }
     }
   }
 }
@@ -1117,9 +1219,7 @@ void update_display(bool blank = false) {
   } else {
     if (millis()-last_disp_update >= disp_update_interval) {
       uint32_t current = millis();
-      #if screensaver_enabled
-        do_screensaver(current);
-      #endif
+      do_screensaver(current);
       #if DISPLAY == EINK_BW || DISPLAY == EINK_3C
       display.setFullWindow();
       display.fillScreen(DISPLAY_WHITE);

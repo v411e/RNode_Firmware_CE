@@ -24,7 +24,6 @@ The latest release, installable through `rnodeconf`, is version `1.73`. This rel
 - Fix TNC EEPROM settings not being saved - courtesy of @attermann
 - Fix ESP32 linker errors - BSP version is now fixed at 2.0.17, using the older crosstool-ng linker from previous versions (2021r1)
 
-
 You must have at least version `2.1.3` of `rnodeconf` installed to update the RNode Firmware to version `1.73`. Get it by updating the `rns` package to at least version `0.6.4`.
 
 ## Supported products and boards

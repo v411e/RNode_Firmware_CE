@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Mark Qvist
+// Copyright (C) 2024, Mark Qvist
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 	#define CONFIG_H
 
 	#define MAJ_VERS  0x01
-	#define MIN_VERS  0x49
+	#define MIN_VERS  0x4e
 
 	#define MODE_HOST 0x11
 	#define MODE_TNC  0x12
@@ -65,7 +65,6 @@
 	// packet RSSI register
 	const int  rssi_offset = 157;
 
-
     // Default LoRa settings
     const int lora_rx_turnaround_ms = 66;
     const int lora_post_tx_yield_slots = 6;
@@ -78,6 +77,7 @@
 	bool pmu_ready     = false;
 	bool promisc       = false;
 	bool implicit      = false;
+	bool memory_low    = false;
 	uint8_t implicit_l = 0;
 
     volatile bool packet_ready  = false;
@@ -90,7 +90,7 @@
 	int		last_rssi		= -292;
 	uint8_t last_rssi_raw   = 0x00;
 	uint8_t last_snr_raw	= 0x80;
-	uint8_t seq				= 0xFF;
+	uint8_t seq[INTERFACE_COUNT];
 	uint16_t read_len		= 0;
 
     bool serial_in_frame = false;
@@ -115,9 +115,10 @@
     unsigned long last_rx   = 0;
 
     // Power management
+    #define BATTERY_STATE_UNKNOWN     0x00
     #define BATTERY_STATE_DISCHARGING 0x01
-    #define BATTERY_STATE_CHARGING 0x02
-    #define BATTERY_STATE_CHARGED 0x03
+    #define BATTERY_STATE_CHARGING    0x02
+    #define BATTERY_STATE_CHARGED     0x03
     bool battery_installed = false;
     bool battery_indeterminate = false;
     bool external_power = false;
@@ -127,6 +128,7 @@
     uint8_t battery_state = 0x00;
     uint8_t display_intensity = 0xFF;
     uint8_t display_addr = 0xFF;
+    bool display_blanking_enabled = false;
     bool display_diagnostics = true;    
     bool device_init_done = false;
     bool eeprom_ok = false;
@@ -134,9 +136,9 @@
 
 	// Boot flags
 	#define START_FROM_BOOTLOADER 0x01
-	#define START_FROM_POWERON 0x02
-	#define START_FROM_BROWNOUT 0x03
-	#define START_FROM_JTAG 0x04
+	#define START_FROM_POWERON    0x02
+	#define START_FROM_BROWNOUT   0x03
+	#define START_FROM_JTAG       0x04
 
     // Subinterfaces
     // select interface 0 by default

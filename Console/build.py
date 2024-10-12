@@ -4,9 +4,9 @@ import sys
 import shutil
 
 packages = {
-    "rns": "rns-0.7.5-py3-none-any.whl",
-    "nomadnet": "nomadnet-0.4.9-py3-none-any.whl",
-    "lxmf": "lxmf-0.4.3-py3-none-any.whl",
+    "rns": "rns-0.8.2-py3-none-any.whl",
+    "nomadnet": "nomadnet-0.5.4-py3-none-any.whl",
+    "lxmf": "lxmf-0.5.5-py3-none-any.whl",
     "rnsh": "rnsh-0.1.4-py3-none-any.whl",
 }
 
@@ -174,26 +174,34 @@ mf.write(help_redirect)
 mf.close()
 
 def optimise_manual(path):
-    pm = 110
+    pm = 60
     scale_imgs = [
         ("_images/board_rnodev2.png", pm),
         ("_images/board_rnode.png", pm),
-        ("_images/board_heltec32.png", pm),
+        ("_images/board_heltec32v20.png", pm),
+        ("_images/board_heltec32v30.png", pm),
         ("_images/board_t3v21.png", pm),
         ("_images/board_t3v20.png", pm),
-        ("_images/sideband_devices.webp", pm),
+        ("_images/board_t3v10.png", pm),
+        ("_images/board_t3s3.png", pm),
         ("_images/board_tbeam.png", pm),
+        ("_images/board_tdeck.png", pm),
+        ("_images/board_rak4631.png", pm),
+        ("_images/board_tbeam_supreme.png", pm),
+        ("_images/sideband_devices.webp", pm),
         ("_images/nomadnet_3.png", pm),
+        ("_images/meshchat_1.webp", pm),
         ("_images/radio_is5ac.png", pm),
         ("_images/radio_rblhg5.png", pm),
         ("_static/rns_logo_512.png", 256),
+        ("../images/bg_h_1.webp", pm),
     ]
 
     import subprocess
     import shlex
     for i,s in scale_imgs:
         fp = path+"/"+i
-        resize = "convert "+fp+" -resize "+str(s)+" "+fp
+        resize = "convert "+fp+" -quality 25 -resize "+str(s)+" "+fp
         print(resize)
         subprocess.call(shlex.split(resize), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -205,6 +213,7 @@ def optimise_manual(path):
         "_static/scripts/furo.js.map",
         "_static/jquery-3.6.0.js",
         "_static/jquery.js",
+        "static/underscore-1.13.1.js",
         "_static/_sphinx_javascript_frameworks_compat.js",
         "_static/scripts/furo.js.LICENSE.txt",
         "_static/styles/furo-extensions.css.map",

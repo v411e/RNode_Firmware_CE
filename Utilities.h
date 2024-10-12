@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Mark Qvist
+// Copyright (C) 2024, Mark Qvist
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 
 #include "ROM.h"
 #include "Framing.h"
-#include "MD5.h"
+#include "src/misc/MD5.h"
 
 #if !HAS_EEPROM && MCU_VARIANT == MCU_NRF52
 uint8_t eeprom_read(uint32_t mapped_addr);
@@ -43,6 +43,9 @@ uint8_t eeprom_read(uint32_t mapped_addr);
 
 #if HAS_DISPLAY == true
   #include "Display.h"
+#else
+	void display_unblank() {}
+	bool display_blanked = false;
 #endif
 
 #if HAS_BLUETOOTH == true || HAS_BLE == true
@@ -65,11 +68,11 @@ uint8_t eeprom_read(uint32_t mapped_addr);
   #if BOARD_MODEL == BOARD_HELTEC32_V3
     //https://github.com/espressif/esp-idf/issues/8855
     #include "hal/wdt_hal.h"
-	#elif BOARD_MODEL == BOARD_T3S3
-		#include "hal/wdt_hal.h"
-  #else BOARD_MODEL != BOARD_T3S3
-	  #include "soc/rtc_wdt.h"
-	#endif
+  #elif BOARD_MODEL == BOARD_T3S3
+	#include "hal/wdt_hal.h"
+  #else
+	#include "hal/wdt_hal.h"
+  #endif
   #define ISR_VECT IRAM_ATTR
 #else
   #define ISR_VECT
@@ -92,7 +95,20 @@ uint8_t boot_vector = 0x00;
 	uint8_t npr = 0;
   uint8_t npg = 0;
   uint8_t npb = 0;
+  float npi = NP_M;
   bool pixels_started = false;
+
+  void led_set_intensity(uint8_t intensity) {
+  	npi = (float)intensity/255.0;
+  }
+
+  void led_init() {
+  	if (EEPROM.read(eeprom_addr(ADDR_CONF_PSET)) == CONF_OK_BYTE) {
+  		uint8_t int_val = EEPROM.read(eeprom_addr(ADDR_CONF_PINT));
+  		led_set_intensity(int_val);
+  	}
+  }
+
   void npset(uint8_t r, uint8_t g, uint8_t b) {
   	if (pixels_started != true) {
   		pixels.begin();
@@ -101,7 +117,7 @@ uint8_t boot_vector = 0x00;
 
   	if (r != npr || g != npg || b != npb) {
   		npr = r; npg = g; npb = b;
-  		pixels.setPixelColor(0, pixels.Color(npr*NP_M, npg*NP_M, npb*NP_M));
+  		pixels.setPixelColor(0, pixels.Color(npr*npi, npg*npi, npb*npi));
   		pixels.show();
   	}
   }
@@ -152,6 +168,16 @@ uint8_t boot_vector = 0x00;
 		void led_rx_off() {	digitalWrite(pin_led_rx, LOW); }
 		void led_tx_on()  { digitalWrite(pin_led_tx, LOW); }
 		void led_tx_off() { digitalWrite(pin_led_tx, HIGH); }
+	#elif BOARD_MODEL == BOARD_TDECK
+		void led_rx_on()  { }
+		void led_rx_off() {	}
+		void led_tx_on()  { }
+		void led_tx_off() { }
+	#elif BOARD_MODEL == BOARD_TBEAM_S_V1
+		void led_rx_on()  { }
+		void led_rx_off() {	}
+		void led_tx_on()  { }
+		void led_tx_off() { }
 	#elif BOARD_MODEL == BOARD_LORA32_V1_0
 		#if defined(EXTERNAL_LEDS)
 			void led_rx_on()  { digitalWrite(pin_led_rx, HIGH); }
@@ -376,8 +402,8 @@ unsigned long led_standby_ticks = 0;
 #if MCU_VARIANT == MCU_ESP32
 
 	#if HAS_NP == true
-		int led_standby_lng = 100;
-		int led_standby_cut = 200;
+		int led_standby_lng = 200;
+		int led_standby_cut = 100;
 		int led_standby_min = 0;
 		int led_standby_max = 375+led_standby_lng;
 		int led_notready_min = 0;
@@ -441,7 +467,7 @@ int8_t  led_standby_direction = 0;
 				} else {
 					led_standby_intensity = led_standby_ti;
 				}
-  			npset(0x00, 0x00, led_standby_intensity);
+  			npset(led_standby_intensity/3, led_standby_intensity/3, led_standby_intensity/3);
 			}
 		}
 
@@ -588,18 +614,17 @@ void serial_write(uint8_t byte) {
 			Serial.write(byte);
 		} else {
 			SerialBT.write(byte);
-
-            #if MCU_VARIANT == MCU_NRF52 && HAS_BLE
-            // This ensures that the TX buffer is flushed after a frame is queued in serial.
-            // serial_in_frame is used to ensure that the flush only happens at the end of the frame
-            if (serial_in_frame && byte == FEND) {
-                SerialBT.flushTXD();
-                serial_in_frame = false;
-            }
-            else if (!serial_in_frame && byte == FEND) {
-                serial_in_frame = true;
-            }
-            #endif
+      #if MCU_VARIANT == MCU_NRF52 && HAS_BLE
+	      // This ensures that the TX buffer is flushed after a frame is queued in serial.
+	      // serial_in_frame is used to ensure that the flush only happens at the end of the frame
+	      if (serial_in_frame && byte == FEND) {
+	          SerialBT.flushTXD();
+	          serial_in_frame = false;
+	      }
+	      else if (!serial_in_frame && byte == FEND) {
+	          serial_in_frame = true;
+	      }
+      #endif
 		}
 	#else
 		Serial.write(byte);
@@ -1022,6 +1047,8 @@ void setTXPower(RadioInterface* radio, int txp) {
     if (model == MODEL_A7) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_A8) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_A9) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+    if (model == MODEL_AA) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+    if (model == MODEL_AB) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
 
     if (model == MODEL_B3) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_B4) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
@@ -1030,6 +1057,12 @@ void setTXPower(RadioInterface* radio, int txp) {
 
     if (model == MODEL_C4) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_C9) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+
+    if (model == MODEL_D4) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+    if (model == MODEL_D9) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+
+    if (model == MODEL_DB) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
+    if (model == MODEL_DC) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
 
     if (model == MODEL_E4) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
     if (model == MODEL_E9) radio->setTxPower(txp, PA_OUTPUT_PA_BOOST_PIN);
@@ -1216,11 +1249,11 @@ void promisc_disable() {
 #endif
 
 bool eeprom_info_locked() {
-    #if HAS_EEPROM
-	    uint8_t lock_byte = EEPROM.read(eeprom_addr(ADDR_INFO_LOCK));
-    #elif MCU_VARIANT == MCU_NRF52
-        uint8_t lock_byte = eeprom_read(eeprom_addr(ADDR_INFO_LOCK));
-    #endif
+  #if HAS_EEPROM
+    uint8_t lock_byte = EEPROM.read(eeprom_addr(ADDR_INFO_LOCK));
+  #elif MCU_VARIANT == MCU_NRF52
+    uint8_t lock_byte = eeprom_read(eeprom_addr(ADDR_INFO_LOCK));
+  #endif
 	if (lock_byte == INFO_LOCK_BYTE) {
 		return true;
 	} else {
@@ -1297,15 +1330,15 @@ void eeprom_update(int mapped_addr, uint8_t byte) {
         written_bytes++;
         
         if (((mapped_addr - eeprom_addr(0)) == ADDR_INFO_LOCK) || (mapped_addr - eeprom_addr(0)) == ADDR_CONF_OK) {
-                // have to do a flush because we're only writing 1 byte and it syncs after 4
-                eeprom_flush();
+            // have to do a flush because we're only writing 1 byte and it syncs after 4
+            eeprom_flush();
         }
 
-        if (written_bytes >= 4) {
-            file.close();
-            file.open(EEPROM_FILE, FILE_O_WRITE);
-            written_bytes = 0;
-        }
+    if (written_bytes >= 4) {
+      file.close();
+      file.open(EEPROM_FILE, FILE_O_WRITE);
+      written_bytes = 0;
+    }
 	#endif
 }
 
@@ -1337,16 +1370,16 @@ bool eeprom_lock_set() {
 }
 
 bool eeprom_product_valid() {
-    #if HAS_EEPROM
-	    uint8_t rval = EEPROM.read(eeprom_addr(ADDR_PRODUCT));
-    #elif MCU_VARIANT == MCU_NRF52
-	    uint8_t rval = eeprom_read(eeprom_addr(ADDR_PRODUCT));
-    #endif
+  #if HAS_EEPROM
+    uint8_t rval = EEPROM.read(eeprom_addr(ADDR_PRODUCT));
+  #elif MCU_VARIANT == MCU_NRF52
+    uint8_t rval = eeprom_read(eeprom_addr(ADDR_PRODUCT));
+  #endif
 
 	#if PLATFORM == PLATFORM_ESP32
-	if (rval == PRODUCT_RNODE || rval == BOARD_RNODE_NG_20 || rval == BOARD_RNODE_NG_21 || rval == PRODUCT_HMBRW || rval == PRODUCT_TBEAM || rval == PRODUCT_T32_10 || rval == PRODUCT_T32_20 || rval == PRODUCT_T32_21 || rval == PRODUCT_H32_V2 || rval == PRODUCT_H32_V3) {
+	if (rval == PRODUCT_RNODE || rval == BOARD_RNODE_NG_20 || rval == BOARD_RNODE_NG_21 || rval == PRODUCT_HMBRW || rval == PRODUCT_TBEAM || rval == PRODUCT_T32_10 || rval == PRODUCT_T32_20 || rval == PRODUCT_T32_21 || rval == PRODUCT_H32_V2 || rval == PRODUCT_H32_V3 || rval == PRODUCT_TDECK_V1 || rval == PRODUCT_TBEAM_S_V1) {
 	#elif PLATFORM == PLATFORM_NRF52
-	if (rval == PRODUCT_TECHO || rval == PRODUCT_RAK4631 || rval == PRODUCT_HMBRW || rval == PRODUCT_FREENODE) {
+	if (rval == PRODUCT_TECHO || rval == PRODUCT_RAK4631 || rval == PRODUCT_HMBRW || rval == PRODUCT_OPENCOM_XL) {
 	#else
 	if (false) {
 	#endif
@@ -1368,14 +1401,18 @@ bool eeprom_model_valid() {
 	if (model == MODEL_A3 || model == MODEL_A8) {
 	#elif BOARD_MODEL == BOARD_RNODE_NG_21
 	if (model == MODEL_A2 || model == MODEL_A7) {
+	#elif BOARD_MODEL == BOARD_RNODE_NG_22
+	if (model == MODEL_A1 || model == MODEL_A6 || model == MODEL_A5 || model == MODEL_AA) {
 	#elif BOARD_MODEL == BOARD_T3S3
 	if (model == MODEL_A1 || model == MODEL_A5 || model == MODEL_A6) {
-	#elif BOARD_MODEL == BOARD_HMBRW
-	if (model == MODEL_FF || model == MODEL_FE) {
 	#elif BOARD_MODEL == BOARD_TBEAM
 	if (model == MODEL_E4 || model == MODEL_E9 || model == MODEL_E3 || model == MODEL_E8) {
 	#elif BOARD_MODEL == BOARD_TECHO
 	if (model == MODEL_16 || model == MODEL_17) {
+	#elif BOARD_MODEL == BOARD_TDECK
+	if (model == MODEL_D4 || model == MODEL_D9) {
+	#elif BOARD_MODEL == BOARD_TBEAM_S_V1
+	if (model == MODEL_DB || model == MODEL_DC) {
 	#elif BOARD_MODEL == BOARD_LORA32_V1_0
 	if (model == MODEL_BA || model == MODEL_BB) {
 	#elif BOARD_MODEL == BOARD_LORA32_V2_0
@@ -1390,6 +1427,8 @@ bool eeprom_model_valid() {
     if (model == MODEL_11 || model == MODEL_12 || model == MODEL_13 || model == MODEL_14 || model == MODEL_21) {
 	#elif BOARD_MODEL == BOARD_HUZZAH32
 	if (model == MODEL_FF) {
+	#elif BOARD_MODEL == BOARD_HMBRW
+	if (model == MODEL_FF || model == MODEL_FE) {
 	#elif BOARD_MODEL == BOARD_GENERIC_ESP32
 	if (model == MODEL_FF || model == MODEL_FE) {
 	#else
@@ -1447,16 +1486,16 @@ bool eeprom_checksum_valid() {
 void bt_conf_save(bool is_enabled) {
 	if (is_enabled) {
 		eeprom_update(eeprom_addr(ADDR_CONF_BT), BT_ENABLE_BYTE);
-        #if !HAS_EEPROM && MCU_VARIANT == MCU_NRF52
-            // have to do a flush because we're only writing 1 byte and it syncs after 8
-            eeprom_flush();
-        #endif
+      #if !HAS_EEPROM && MCU_VARIANT == MCU_NRF52
+        // have to do a flush because we're only writing 1 byte and it syncs after 8
+        eeprom_flush();
+      #endif
 	} else {
 		eeprom_update(eeprom_addr(ADDR_CONF_BT), 0x00);
-        #if !HAS_EEPROM && MCU_VARIANT == MCU_NRF52
-            // have to do a flush because we're only writing 1 byte and it syncs after 8
-            eeprom_flush();
-        #endif
+    #if !HAS_EEPROM && MCU_VARIANT == MCU_NRF52
+      // have to do a flush because we're only writing 1 byte and it syncs after 8
+      eeprom_flush();
+    #endif
 	}
 }
 
@@ -1467,6 +1506,25 @@ void di_conf_save(uint8_t dint) {
 void da_conf_save(uint8_t dadr) {
 	eeprom_update(eeprom_addr(ADDR_CONF_DADR), dadr);
 }
+
+void db_conf_save(uint8_t val) {
+	#if HAS_DISPLAY
+		if (val == 0x00) {
+			display_blanking_enabled = false;
+		} else {
+			display_blanking_enabled = true;
+			//display_blanking_timeout = val*1000;
+		}
+		eeprom_update(eeprom_addr(ADDR_CONF_BSET), CONF_OK_BYTE);
+		eeprom_update(eeprom_addr(ADDR_CONF_DBLK), val);
+	#endif
+}
+
+void np_int_conf_save(uint8_t p_int) {
+	eeprom_update(eeprom_addr(ADDR_CONF_PSET), CONF_OK_BYTE);
+	eeprom_update(eeprom_addr(ADDR_CONF_PINT), p_int);
+}
+
 
 bool eeprom_have_conf() {
     #if HAS_EEPROM

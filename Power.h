@@ -1,9 +1,28 @@
-#if BOARD_MODEL == BOARD_TBEAM
+// Copyright (C) 2024, Mark Qvist
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#if BOARD_MODEL == BOARD_TBEAM || BOARD_MODEL == BOARD_TBEAM_S_V1
   #include <XPowersLib.h>
   XPowersLibInterface* PMU = NULL;
 
   #ifndef PMU_WIRE_PORT
-    #define PMU_WIRE_PORT   Wire
+    #if BOARD_MODEL == BOARD_TBEAM_S_V1
+      #define PMU_WIRE_PORT   Wire1
+    #else
+      #define PMU_WIRE_PORT   Wire
+    #endif
   #endif
 
   #define BAT_V_MIN       3.15
@@ -28,8 +47,6 @@
       pmuInterrupt = true;
   }
 #elif BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1
-  #define BAT_C_SAMPLES   7
-  #define BAT_D_SAMPLES   2
   #define BAT_V_MIN       3.15
   #define BAT_V_MAX       4.3
   #define BAT_V_CHG       4.48
@@ -44,26 +61,60 @@
   int bat_charged_samples = 0;
   bool bat_voltage_dropping = false;
   float bat_delay_v = 0;
+  float bat_state_change_v = 0;
 #elif BOARD_MODEL == BOARD_RAK4631
-#include "nrfx_power.h"
-#define BAT_C_SAMPLES   7
-#define BAT_D_SAMPLES   2
-#define BAT_V_MIN       2.75
-#define BAT_V_MAX       4.2
-#define BAT_V_FLOAT     4.22
-#define BAT_SAMPLES     5
-#define VBAT_MV_PER_LSB (0.73242188F) // 3.0V ADC range and 12 - bit ADC resolution = 3000mV / 4096
-#define VBAT_DIVIDER_COMP (1.73)      // Compensation factor for the VBAT divider
-#define VBAT_MV_PER_LSB_FIN (VBAT_DIVIDER_COMP * VBAT_MV_PER_LSB)
-#define PIN_VBAT WB_A0
-float bat_p_samples[BAT_SAMPLES];
-float bat_v_samples[BAT_SAMPLES];
-uint8_t bat_samples_count = 0;
-int bat_discharging_samples = 0;
-int bat_charging_samples = 0;
-int bat_charged_samples = 0;
-bool bat_voltage_dropping = false;
-float bat_delay_v = 0;
+  #include "nrfx_power.h"
+  #define BAT_C_SAMPLES   7
+  #define BAT_D_SAMPLES   2
+  #define BAT_V_MIN       2.75
+  #define BAT_V_MAX       4.2
+  #define BAT_V_FLOAT     4.22
+  #define BAT_SAMPLES     5
+  #define VBAT_MV_PER_LSB (0.73242188F) // 3.0V ADC range and 12 - bit ADC resolution = 3000mV / 4096
+  #define VBAT_DIVIDER_COMP (1.73)      // Compensation factor for the VBAT divider
+  #define VBAT_MV_PER_LSB_FIN (VBAT_DIVIDER_COMP * VBAT_MV_PER_LSB)
+  #define PIN_VBAT WB_A0
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+#elif BOARD_MODEL == BOARD_TDECK
+  #define BAT_V_MIN       3.15
+  #define BAT_V_MAX       4.3
+  #define BAT_V_CHG       4.48
+  #define BAT_V_FLOAT     4.33
+  #define BAT_SAMPLES     5
+  const uint8_t pin_vbat = 4;
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+  float bat_state_change_v = 0;
+#elif BOARD_MODEL == BOARD_HELTEC32_V3
+  #define BAT_V_MIN       3.15
+  #define BAT_V_MAX       4.3
+  #define BAT_V_CHG       4.48
+  #define BAT_V_FLOAT     4.33
+  #define BAT_SAMPLES     7
+  const uint8_t pin_vbat = 1;
+  const uint8_t pin_ctrl = 37;
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+  float bat_state_change_v = 0;
 #endif
 
 uint32_t last_pmu_update = 0;
@@ -74,10 +125,17 @@ uint8_t pmu_rc = 0;
 void kiss_indicate_battery();
 
 void measure_battery() {
-  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1
+  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_HELTEC32_V3 || BOARD_MODEL == BOARD_TDECK
     battery_installed = true;
     battery_indeterminate = true;
-    bat_v_samples[bat_samples_count%BAT_SAMPLES] = (float)(analogRead(pin_vbat)) / 4095*2*3.3*1.1;
+
+    #if BOARD_MODEL == BOARD_HELTEC32_V3
+      float battery_measurement = (float)(analogRead(pin_vbat)) * 0.0041;
+    #else
+      float battery_measurement = (float)(analogRead(pin_vbat)) / 4095.0*2.0*3.3*1.1;
+    #endif
+
+    bat_v_samples[bat_samples_count%BAT_SAMPLES] = battery_measurement;
     bat_p_samples[bat_samples_count%BAT_SAMPLES] = ((battery_voltage-BAT_V_MIN) / (BAT_V_MAX-BAT_V_MIN))*100.0;
     
     bat_samples_count++;
@@ -100,41 +158,60 @@ void measure_battery() {
       battery_voltage = battery_voltage/BAT_SAMPLES;
       
       if (bat_delay_v == 0) bat_delay_v = battery_voltage;
+      if (bat_state_change_v == 0) bat_state_change_v = battery_voltage;
       if (battery_percent > 100.0) battery_percent = 100.0;
       if (battery_percent < 0.0) battery_percent = 0.0;
 
       if (bat_samples_count%BAT_SAMPLES == 0) {
+        float bat_delay_diff = bat_state_change_v-battery_voltage;
+        if (bat_delay_diff < 0) { bat_delay_diff *= -1; }
+
         if (battery_voltage < bat_delay_v && battery_voltage < BAT_V_FLOAT) {
-          bat_voltage_dropping = true;
+          if (bat_voltage_dropping == false) {
+            if (bat_delay_diff > 0.008) {
+              bat_voltage_dropping = true;
+              bat_state_change_v = battery_voltage;
+              // SerialBT.printf("STATE CHANGE to DISCHARGE at delta=%.3fv. State change v is now %.3fv.\n", bat_delay_diff, bat_state_change_v);
+            }
+          }
         } else {
-          bat_voltage_dropping = false;
+          if (bat_voltage_dropping == true) {
+            if (bat_delay_diff > 0.01) {
+              bat_voltage_dropping = false;
+              bat_state_change_v = battery_voltage;
+              // SerialBT.printf("STATE CHANGE to CHARGE at delta=%.3fv. State change v is now %.3fv.\n", bat_delay_diff, bat_state_change_v);
+            }
+          }
         }
         bat_samples_count = 0;
+        bat_delay_v = battery_voltage;
       }
 
       if (bat_voltage_dropping && battery_voltage < BAT_V_FLOAT) {
         battery_state = BATTERY_STATE_DISCHARGING;
       } else {
-        #if BOARD_MODEL == BOARD_RNODE_NG_21
+        if (battery_percent < 100.0) {
           battery_state = BATTERY_STATE_CHARGING;
-        #else
-          battery_state = BATTERY_STATE_DISCHARGING;
-        #endif
+        } else {
+          battery_state = BATTERY_STATE_CHARGED;
+        }
       }
-
-
 
       // if (bt_state == BT_STATE_CONNECTED) {
       //   SerialBT.printf("Bus voltage %.3fv. Unfiltered %.3fv.", battery_voltage, bat_v_samples[BAT_SAMPLES-1]);
       //   if (bat_voltage_dropping) {
-      //     SerialBT.printf(" Voltage is dropping. Percentage %.1f%%.\n", battery_percent);
+      //     SerialBT.printf(" Voltage is dropping. Percentage %.1f%%.", battery_percent);
       //   } else {
-      //     SerialBT.print(" Voltage is not dropping.\n");
+      //     SerialBT.printf(" Voltage is not dropping. Percentage %.1f%%.", battery_percent);
       //   }
+      //   if (battery_state == BATTERY_STATE_DISCHARGING) { SerialBT.printf(" Battery discharging. delay_v %.3fv", bat_delay_v); }
+      //   if (battery_state == BATTERY_STATE_CHARGING) { SerialBT.printf(" Battery charging. delay_v %.3fv", bat_delay_v); }
+      //   if (battery_state == BATTERY_STATE_CHARGED) { SerialBT.print(" Battery is charged."); }
+      //   SerialBT.print("\n");
       // }
     }
 
-  #elif BOARD_MODEL == BOARD_TBEAM
+  #elif BOARD_MODEL == BOARD_TBEAM || BOARD_MODEL == BOARD_TBEAM_S_V1
     if (PMU) {
       float discharge_current = 0;
       float charge_current    = 0;
@@ -172,7 +249,7 @@ void measure_battery() {
           }
         }
       } else {
-        battery_state = BATTERY_STATE_DISCHARGING;
+        battery_state = BATTERY_STATE_UNKNOWN;
         battery_percent = 0.0;
         battery_voltage = 0.0;
       }
@@ -301,8 +378,12 @@ void update_pmu() {
 }
 
 bool init_pmu() {
-  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1
+  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_TDECK
     pinMode(pin_vbat, INPUT);
+    return true;
+  #elif BOARD_MODEL == BOARD_HELTEC32_V3
+    pinMode(pin_ctrl,OUTPUT);
+    digitalWrite(pin_ctrl, LOW);
     return true;
   #elif BOARD_MODEL == BOARD_TBEAM
     Wire.begin(I2C_SDA, I2C_SCL);
@@ -310,22 +391,16 @@ bool init_pmu() {
     if (!PMU) {
         PMU = new XPowersAXP2101(PMU_WIRE_PORT);
         if (!PMU->init()) {
-            Serial.println("Warning: Failed to find AXP2101 power management");
             delete PMU;
             PMU = NULL;
-        } else {
-            Serial.println("AXP2101 PMU init succeeded, using AXP2101 PMU");
         }
     }
 
     if (!PMU) {
         PMU = new XPowersAXP192(PMU_WIRE_PORT);
         if (!PMU->init()) {
-            Serial.println("Warning: Failed to find AXP192 power management");
             delete PMU;
             PMU = NULL;
-        } else {
-            Serial.println("AXP192 PMU init succeeded, using AXP192 PMU");
         }
     }
 
@@ -431,7 +506,7 @@ bool init_pmu() {
     PMU->setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
 
     return true; 
-  #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_FREENODE
+  #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
     // board doesn't have PMU but we can measure batt voltage
 
     // prep ADC for reading battery level
@@ -446,6 +521,86 @@ bool init_pmu() {
     // Get a single ADC sample and throw it away
     float raw = analogRead(PIN_VBAT);
     return true;
+  #elif BOARD_MODEL == BOARD_TBEAM_S_V1
+    Wire1.begin(I2C_SDA, I2C_SCL);
+
+    if (!PMU) {
+        PMU = new XPowersAXP2101(PMU_WIRE_PORT);
+        if (!PMU->init()) {
+            delete PMU;
+            PMU = NULL;
+        }
+    }
+
+    if (!PMU) {
+      return false;
+    }
+
+    /**
+     * gnss module power channel
+     * The default ALDO4 is off, you need to turn on the GNSS power first, otherwise it will be invalid during
+     * initialization
+     */
+    PMU->setPowerChannelVoltage(XPOWERS_ALDO4, 3300);
+    PMU->enablePowerOutput(XPOWERS_ALDO4);
+
+    // lora radio power channel
+    PMU->setPowerChannelVoltage(XPOWERS_ALDO3, 3300);
+    PMU->enablePowerOutput(XPOWERS_ALDO3);
+
+    // m.2 interface
+    PMU->setPowerChannelVoltage(XPOWERS_DCDC3, 3300);
+    PMU->enablePowerOutput(XPOWERS_DCDC3);
+
+    /**
+     * ALDO2 cannot be turned off.
+     * It is a necessary condition for sensor communication.
+     * It must be turned on to properly access the sensor and screen
+     * It is also responsible for the power supply of PCF8563
+     */
+    PMU->setPowerChannelVoltage(XPOWERS_ALDO2, 3300);
+    PMU->enablePowerOutput(XPOWERS_ALDO2);
+
+    // 6-axis , magnetometer ,bme280 , oled screen power channel
+    PMU->setPowerChannelVoltage(XPOWERS_ALDO1, 3300);
+    PMU->enablePowerOutput(XPOWERS_ALDO1);
+
+    // sdcard power channle
+    PMU->setPowerChannelVoltage(XPOWERS_BLDO1, 3300);
+    PMU->enablePowerOutput(XPOWERS_BLDO1);
+
+    // PMU->setPowerChannelVoltage(XPOWERS_DCDC4, 3300);
+    // PMU->enablePowerOutput(XPOWERS_DCDC4);
+
+    // not use channel
+    PMU->disablePowerOutput(XPOWERS_DCDC2); // not elicited
+    PMU->disablePowerOutput(XPOWERS_DCDC5); // not elicited
+    PMU->disablePowerOutput(XPOWERS_DLDO1); // Invalid power channel, it does not exist
+    PMU->disablePowerOutput(XPOWERS_DLDO2); // Invalid power channel, it does not exist
+    PMU->disablePowerOutput(XPOWERS_VBACKUP);
+
+    // Configure charging
+    PMU->setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
+    PMU->setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_500MA);
+    // TODO: Reset
+    PMU->setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+
+    // Set the time of pressing the button to turn off
+    PMU->setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
+    PMU->setPowerKeyPressOnTime(XPOWERS_POWERON_128MS);
+
+    // disable all axp chip interrupt
+    PMU->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+    PMU->clearIrqStatus();
+
+    // It is necessary to disable the detection function of the TS pin on the board
+    // without the battery temperature detection function, otherwise it will cause abnormal charging
+    PMU->disableTSPinMeasure();
+    PMU->enableVbusVoltageMeasure();
+    PMU->enableBattVoltageMeasure();
+
+
+    return true; 
   #else
     return false;
   #endif
