@@ -81,7 +81,8 @@
   #define BOARD_T3S3          0x42 // T3S3 - sold by LilyGO
   #define MODEL_A1 0xA1            // T3S3 SX1262 868/915 MHz
   #define MODEL_AB 0xAB            // T3S3 SX1276 868/915 MHz
-  #define MODEL_A5 0xA5            // T3S3 SX1280 PA (2.4GHz)
+  #define MODEL_A5 0xA5            // T3S3 SX1278 433 MHz
+  #define MODEL_AB 0xAB            // T3S3 SX1280 2.4 GHz w/ PA
 
   #define PRODUCT_TECHO 0x15       // LilyGO T-Echo devices
   #define BOARD_TECHO         0x43

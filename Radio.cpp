@@ -2346,7 +2346,7 @@ void sx128x::setTxPower(int level, int outputPin) {
 
     executeOpcode(OP_TX_PARAMS_8X, tx_buf, 2);
 
-    #elif BOARD_VARIANT == MODEL_A5
+    #elif BOARD_VARIANT == MODEL_AB
     // T3S3 SX1280 PA
         if (level > 20) {
             level = 20;
