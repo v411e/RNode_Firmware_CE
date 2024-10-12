@@ -76,7 +76,7 @@ public:
     _post_tx_yield_timeout(0), _csma_slot_ms(50), _csma_p(85), _csma_p_min(0.15),
     _csma_p_max(0.333), _csma_b_speed(0.15), _preambleLength(6), _lora_symbol_time_ms(0.0),
     _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
-     _packet{0}, _onReceive(NULL) {};
+     _packet{0}, _onReceive(NULL), _txp(0) {};
     virtual int begin() = 0;
     virtual void end() = 0;
 
@@ -108,7 +108,7 @@ public:
     virtual void sleep() = 0;
 
     virtual bool preInit() = 0;
-    virtual uint8_t getTxPower() = 0;
+    virtual int8_t getTxPower() = 0;
     virtual void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN) = 0;
     virtual uint32_t getFrequency() = 0;
     virtual void setFrequency(uint32_t frequency) = 0;
@@ -296,6 +296,7 @@ protected:
     virtual void implicitHeaderMode() = 0;
 
     uint8_t _index;
+    int8_t _txp;
     bool _radio_locked;
     bool _radio_online;
     float _st_airtime_limit;
@@ -371,7 +372,7 @@ public:
   void sleep();
 
   bool preInit();
-  uint8_t getTxPower();
+  int8_t getTxPower();
   void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
   uint32_t getFrequency();
   void setFrequency(uint32_t frequency);
@@ -439,7 +440,6 @@ private:
   int _rxen;
   int _busy;
   uint32_t _frequency;
-  int _txp;
   uint8_t _sf;
   uint8_t _bw;
   uint8_t _cr;
@@ -491,7 +491,7 @@ public:
   void sleep();
 
   bool preInit();
-  uint8_t getTxPower();
+  int8_t getTxPower();
   void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
   uint32_t getFrequency();
   void setFrequency(uint32_t frequency);
@@ -585,7 +585,7 @@ public:
   void sleep();
 
   bool preInit();
-  uint8_t getTxPower();
+  int8_t getTxPower();
   void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
   uint32_t getFrequency();
   void setFrequency(uint32_t frequency);
@@ -653,7 +653,6 @@ private:
   int _busy;
   int _modem;
   uint32_t _frequency;
-  int _txp;
   uint8_t _sf;
   uint8_t _bw;
   uint8_t _cr;

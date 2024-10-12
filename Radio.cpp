@@ -119,7 +119,7 @@ sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, 
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0), _spiModem(spi), _ss(ss),
     _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
-    _busy(busy), _rxen(rxen), _frequency(0), _txp(0), _sf(0x07), _bw(0x04),
+    _busy(busy), _rxen(rxen), _frequency(0), _sf(0x07), _bw(0x04),
     _cr(0x01), _ldro(0x00), _packetIndex(0), _implicitHeaderMode(0),
     _payloadLength(255), _crcMode(1), _fifo_tx_addr_ptr(0),
     _fifo_rx_addr_ptr(0), _preinit_done(false), _tcxo(tcxo),
@@ -793,7 +793,7 @@ void sx126x::setTxPower(int level, int outputPin) {
     executeOpcode(OP_TX_PARAMS_6X, tx_buf, 2);
 }
 
-uint8_t sx126x::getTxPower() {
+int8_t sx126x::getTxPower() {
     return _txp;
 }
 
@@ -1384,9 +1384,10 @@ void sx127x::setTxPower(int level, int outputPin) {
     writeRegister(REG_PA_DAC_7X, 0x84);
     writeRegister(REG_PA_CONFIG_7X, PA_BOOST_7X | (level - 2));
   }
+  _txp = level;
 }
 
-uint8_t sx127x::getTxPower() { byte txp = readRegister(REG_PA_CONFIG_7X); return txp; }
+int8_t sx127x::getTxPower() { return _txp; }
 
 void sx127x::setFrequency(uint32_t frequency) {
   _frequency = frequency;
@@ -1617,7 +1618,7 @@ sx128x::sx128x(uint8_t index, SPIClass* spi, bool tcxo, int ss, int sclk, int mo
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
   _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
-  _busy(busy), _rxen(rxen), _txen(txen), _frequency(0), _txp(0), _sf(0x05),
+  _busy(busy), _rxen(rxen), _txen(txen), _frequency(0), _sf(0x05),
   _bw(0x34), _cr(0x01), _packetIndex(0), _implicitHeaderMode(0),
   _payloadLength(255), _crcMode(0), _fifo_tx_addr_ptr(0), _fifo_rx_addr_ptr(0),
   _rxPacketLength(0), _preinit_done(false),
@@ -2445,7 +2446,7 @@ void sx128x::setTxPower(int level, int outputPin) {
     executeOpcode(OP_TX_PARAMS_8X, tx_buf, 2);
 }
 
-uint8_t sx128x::getTxPower() {
+int8_t sx128x::getTxPower() {
       return _txp;
 }
 
