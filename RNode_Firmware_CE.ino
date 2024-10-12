@@ -538,7 +538,9 @@ void transmit(RadioInterface* radio, uint16_t size) {
 
         written++;
 
-        if (written == 255) {
+        // Only start a new packet if this is a split packet and it has
+        // exceeded the length of a single packet
+        if (written == 255 && header & 0x0F) {
           radio->endPacket(); radio->addAirtime(written);
           radio->beginPacket();
           radio->write(header);
