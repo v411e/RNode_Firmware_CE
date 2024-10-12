@@ -731,8 +731,8 @@
               34, // pin_busy
               33, // pin_dio
                8, // pin_reset
-              -1, // pin_txen
-              -1, // pin_rxen
+              10, // pin_txen
+              21, // pin_rxen
               -1  // pin_tcxo_enable
           }
       };
