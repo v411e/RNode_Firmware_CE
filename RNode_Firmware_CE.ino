@@ -79,8 +79,8 @@ typedef struct {
       size_t len;
       int rssi;
       int snr_raw;
-      uint8_t data[];
       uint8_t interface;
+      uint8_t data[];
 } modem_packet_t;
 static xQueueHandle modem_packet_queue = NULL;
 
@@ -392,7 +392,7 @@ inline void getPacketData(RadioInterface* radio, uint16_t len) {
   #endif
 }
 
-inline bool queuePacket(RadioInterface* radio, uint8_t index) {
+inline bool queue_packet(RadioInterface* radio, uint8_t index) {
     // Allocate packet struct, but abort if there
     // is not enough memory available.
     modem_packet_t *modem_packet = (modem_packet_t*)malloc(sizeof(modem_packet_t) + read_len);
@@ -413,7 +413,9 @@ inline bool queuePacket(RadioInterface* radio, uint8_t index) {
     memcpy(modem_packet->data, pbuf, read_len);
     if (!modem_packet_queue || xQueueSendFromISR(modem_packet_queue, &modem_packet, NULL) != pdPASS) {
         free(modem_packet);
+        return false;
     }
+    return true;
 }
 
 void ISR_VECT receive_callback(uint8_t index, int packet_size) {
@@ -500,7 +502,7 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
   }
 
   if (ready) {
-      queuePacket(selected_radio, index);
+      queue_packet(selected_radio, index);
   }
 
   last_rx = millis();

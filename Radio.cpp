@@ -129,7 +129,7 @@ sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, 
   setTimeout(0);
   // TODO, figure out why this has to be done. Using the index to reference the
   // interface_obj list causes a crash otherwise
-  _index = getIndex();
+  //_index = getIndex();
 }
 
 bool sx126x::preInit() {
@@ -1098,7 +1098,7 @@ sx127x::sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int mis
     setTimeout(0); 
     // TODO, figure out why this has to be done. Using the index to reference the
     // interface_obj list causes a crash otherwise
-    _index = getIndex();
+    //_index = getIndex();
 }
 
 void sx127x::setSPIFrequency(uint32_t frequency) { _spiSettings = SPISettings(frequency, MSBFIRST, SPI_MODE0); }
@@ -1628,7 +1628,7 @@ sx128x::sx128x(uint8_t index, SPIClass* spi, bool tcxo, int ss, int sclk, int mo
   setTimeout(0);
   // TODO, figure out why this has to be done. Using the index to reference the
   // interface_obj list causes a crash otherwise
-  _index = getIndex();
+  //_index = getIndex();
 }
 
 bool sx128x::preInit() {

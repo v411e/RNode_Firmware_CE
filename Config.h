@@ -80,8 +80,7 @@
 	bool memory_low    = false;
 	uint8_t implicit_l = 0;
 
-    volatile bool packet_ready  = false;
-    volatile uint8_t packet_interface = 0xFF;
+    uint8_t packet_interface = 0xFF;
 
 	uint8_t op_mode   = MODE_HOST;
 	uint8_t model     = 0x00;

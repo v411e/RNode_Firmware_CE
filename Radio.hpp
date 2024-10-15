@@ -451,7 +451,6 @@ private:
   int _fifo_tx_addr_ptr;
   int _fifo_rx_addr_ptr;
   bool _preinit_done;
-  uint8_t _index;
   bool _tcxo;
   bool _dio2_as_rf_switch;
 };
@@ -545,7 +544,6 @@ private:
   int _packetIndex;
   int _implicitHeaderMode;
   bool _preinit_done;
-  uint8_t _index;
   uint8_t _sf;
   uint8_t _cr;
 };
@@ -664,7 +662,6 @@ private:
   int _fifo_rx_addr_ptr;
   bool _preinit_done;
   int _rxPacketLength;
-  uint8_t _index;
   bool _tcxo;
 };
 #endif
