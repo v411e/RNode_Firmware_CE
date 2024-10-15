@@ -371,7 +371,6 @@ inline void kiss_write_packet(int index) {
 
   serial_write(FEND);
   read_len = 0;
-  packet_ready = false;
 
   #if MCU_VARIANT == MCU_ESP32 && HAS_BLE
       bt_flush();
