@@ -726,7 +726,7 @@
               -1  // pin_tcxo_enable
           }
       };
-      #elif BOARD_VARIANT == MODEL_A5 // SX1280 with PA 
+      #elif BOARD_VARIANT == MODEL_AB // SX1280 with PA 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1280
