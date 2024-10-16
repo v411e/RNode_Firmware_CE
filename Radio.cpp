@@ -740,7 +740,7 @@ void sx126x::sleep()
 
 void sx126x::enableTCXO() {
   if (_tcxo) {
-    #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_HELTEC32_V3
+    #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL || BOARD_MODEL == BOARD_HELTEC32_V3
       uint8_t buf[4] = {MODE_TCXO_3_3V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_TBEAM
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
@@ -2240,7 +2240,7 @@ void sx128x::disableTCXO() {
 
 void sx128x::setTxPower(int level, int outputPin) {
     uint8_t tx_buf[2];
-    #if BOARD_VARIANT == MODEL_13
+    #if BOARD_VARIANT == MODEL_13 || BOARD_VARIANT == MODEL_21
     // RAK4631 with WisBlock SX1280 module (LIBSYS002)
     if (level > 27) {
         level = 27;

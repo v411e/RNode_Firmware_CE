@@ -62,7 +62,7 @@
   bool bat_voltage_dropping = false;
   float bat_delay_v = 0;
   float bat_state_change_v = 0;
-#elif BOARD_MODEL == BOARD_RAK4631
+#elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
   #include "nrfx_power.h"
   #define BAT_C_SAMPLES   7
   #define BAT_D_SAMPLES   2
@@ -291,7 +291,7 @@ void measure_battery() {
       battery_ready = false;
     }
 
-  #elif BOARD_MODEL == BOARD_RAK4631
+  #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
     battery_installed = true;
     battery_indeterminate = false;
 

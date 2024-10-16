@@ -94,7 +94,7 @@ void busyCallback(const void* p) {
   #define SCL_OLED 17
   #define SDA_OLED 18
   #endif
-#elif BOARD_MODEL == BOARD_RAK4631
+#elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
   #if DISPLAY == OLED
   // RAK1921/SSD1306
   #define DISP_RST -1
@@ -135,7 +135,7 @@ void busyCallback(const void* p) {
 
 #include "Graphics.h"
 
-#if BOARD_MODEL == BOARD_RAK4631
+#if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
   #if DISPLAY == EINK_BW
   GxEPD2_BW<DISPLAY_MODEL, DISPLAY_MODEL::HEIGHT> display(DISPLAY_MODEL(pin_disp_cs, pin_disp_dc, pin_disp_reset, pin_disp_busy));
   float disp_target_fps = 0.2;
@@ -316,7 +316,7 @@ bool display_init() {
       // waiting for the display to update, it will poll the serial buffer to
       // check for any commands from the host.
       display.epd2.setBusyCallback(busyCallback);
-    #elif BOARD_MODEL == BOARD_RAK4631
+    #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
       #if DISPLAY == OLED
       #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
       pinMode(pin_disp_en, INPUT_PULLUP);
@@ -386,7 +386,7 @@ bool display_init() {
       #elif BOARD_MODEL == BOARD_HELTEC32_V2
         disp_mode = DISP_MODE_PORTRAIT;
         display.setRotation(1);
-      #elif BOARD_MODEL == BOARD_RAK4631
+      #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
         #if DISPLAY == OLED
         #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
         disp_mode = DISP_MODE_PORTRAIT;
@@ -397,7 +397,7 @@ bool display_init() {
       #elif BOARD_MODEL == BOARD_HELTEC32_V3
         disp_mode = DISP_MODE_PORTRAIT;
         display.setRotation(1);
-      #elif BOARD_MODEL == BOARD_RAK4631
+      #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
         disp_mode = DISP_MODE_LANDSCAPE;
         display.setRotation(0);
       #elif BOARD_MODEL == BOARD_TDECK

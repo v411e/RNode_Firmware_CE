@@ -19,7 +19,7 @@
 
 #if MCU_VARIANT == MCU_NRF52
   #define INTERFACE_SPI
-  #if BOARD_MODEL == BOARD_RAK4631 
+  #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
         // Required because on RAK4631, non-default SPI pins must be initialised when class is declared.
       SPIClass interface_spi[1] = {
             // SX1262
