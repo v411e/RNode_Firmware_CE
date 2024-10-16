@@ -135,7 +135,7 @@ void setup() {
     led_init();
   #endif
 
-  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_RNODE_NG_22 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TECHO
+  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_RNODE_NG_22 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_OPENCOM_XL
   // Some boards need to wait until the hardware UART is set up before booting
   // the full firmware. In the case of the RAK4631/TECHO, the line below will wait
   // until a serial connection is actually established with a master. Thus, it
