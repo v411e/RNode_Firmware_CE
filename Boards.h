@@ -108,6 +108,7 @@
   #define MODEL_14            0x14 // RAK4631, 868/915 MHz with WisBlock SX1280 module (LIBSYS002)
 
   #define PRODUCT_OPENCOM_XL  0x20 // openCom XL - sold by Liberated Embedded Systems
+  #define BOARD_OPENCOM_XL    0x52
   #define MODEL_21            0x21 // openCom XL, 868/915 MHz
 
   #define BOARD_E22_ESP32     0x44 // Custom Ebyte E22 board design for meshtastic, source:
