@@ -82,7 +82,7 @@
   #define MODEL_A1 0xA1            // T3S3 SX1262 868/915 MHz
   #define MODEL_AB 0xAB            // T3S3 SX1276 868/915 MHz
   #define MODEL_A5 0xA5            // T3S3 SX1278 433 MHz
-  #define MODEL_AB 0xAB            // T3S3 SX1280 2.4 GHz w/ PA
+  #define MODEL_AC 0xAC            // T3S3 SX1280 2.4 GHz w/ PA
 
   #define PRODUCT_TECHO 0x15       // LilyGO T-Echo devices
   #define BOARD_TECHO         0x43
@@ -727,7 +727,7 @@
               -1  // pin_tcxo_enable
           }
       };
-      #elif BOARD_VARIANT == MODEL_AB // SX1280 with PA 
+      #elif BOARD_VARIANT == MODEL_AC // SX1280 with PA 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1280
