@@ -2644,11 +2644,11 @@ void sx128x::updateBitrate() {
         if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
 
         float target_preamble_symbols;
-        //if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
+        if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
             target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        //} else {
-            /*target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        }*/
+        } else {
+            target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
+        }
         if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
             target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
         } else {
