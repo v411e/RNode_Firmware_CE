@@ -168,6 +168,7 @@ void setup() {
   memset(packet_lengths_buf, 0, sizeof(packet_starts_buf));
 
   memset(seq, 0xFF, sizeof(seq));
+  memset(read_len, 0, sizeof(read_len));
 
   modem_packet_queue = xQueueCreate(MODEM_QUEUE_SIZE, sizeof(modem_packet_t*));
 
@@ -355,7 +356,7 @@ inline void kiss_write_packet(int index) {
   // Add index of interface the packet came from
   serial_write(cmd_byte);
 
-  for (uint16_t i = 0; i < read_len; i++) {
+  for (uint16_t i = 0; i < read_len[index]; i++) {
     #if MCU_VARIANT == MCU_NRF52
       portENTER_CRITICAL();
       uint8_t byte = pbuf[i];
@@ -370,7 +371,7 @@ inline void kiss_write_packet(int index) {
   }
 
   serial_write(FEND);
-  read_len = 0;
+  read_len[index] = 0;
 
   #if MCU_VARIANT == MCU_ESP32 && HAS_BLE
       bt_flush();
@@ -378,14 +379,15 @@ inline void kiss_write_packet(int index) {
 }
 
 inline void getPacketData(RadioInterface* radio, uint16_t len) {
+    uint8_t index = radio->getIndex();
   #if MCU_VARIANT != MCU_NRF52
-    while (len-- && read_len < MTU) {
-      pbuf[read_len++] = radio->read();
+    while (len-- && read_len[index] < MTU) {
+      pbuf[read_len[index]++] = radio->read();
     }  
   #else
     BaseType_t int_mask = taskENTER_CRITICAL_FROM_ISR();
-    while (len-- && read_len < MTU) {
-      pbuf[read_len++] = radio->read();
+    while (len-- && read_len[index] < MTU) {
+      pbuf[read_len[index]++] = radio->read();
     }
     taskEXIT_CRITICAL_FROM_ISR(int_mask);
   #endif
@@ -394,7 +396,7 @@ inline void getPacketData(RadioInterface* radio, uint16_t len) {
 inline bool queue_packet(RadioInterface* radio, uint8_t index) {
     // Allocate packet struct, but abort if there
     // is not enough memory available.
-    modem_packet_t *modem_packet = (modem_packet_t*)malloc(sizeof(modem_packet_t) + read_len);
+    modem_packet_t *modem_packet = (modem_packet_t*)malloc(sizeof(modem_packet_t) + read_len[index]);
     if(!modem_packet) { memory_low = true; return false; }
 
     // Get packet RSSI and SNR
@@ -408,8 +410,8 @@ inline bool queue_packet(RadioInterface* radio, uint8_t index) {
     // Send packet to event queue, but free the
     // allocated memory again if the queue is
     // unable to receive the packet.
-    modem_packet->len = read_len;
-    memcpy(modem_packet->data, pbuf, read_len);
+    modem_packet->len = read_len[index];
+    memcpy(modem_packet->data, pbuf, read_len[index]);
     if (!modem_packet_queue || xQueueSendFromISR(modem_packet_queue, &modem_packet, NULL) != pdPASS) {
         free(modem_packet);
         return false;
@@ -437,9 +439,9 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
       // packet, so we set the seq variable
       // and add the data to the buffer
       #if MCU_VARIANT == MCU_NRF52
-        int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
+        int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len[index] = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
       #else
-        read_len = 0;
+        read_len[index] = 0;
       #endif
       
       seq[index] = sequence;
@@ -462,9 +464,9 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
       // that we are seeing the first part of
       // a new split packet.
       #if MCU_VARIANT == MCU_NRF52
-        int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
+        int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len[index] = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
       #else
-        read_len = 0;
+        read_len[index] = 0;
       #endif
       seq[index] = sequence;
 
@@ -479,9 +481,9 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
         // If we already had part of a split
         // packet in the buffer, we clear it.
         #if MCU_VARIANT == MCU_NRF52
-          int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
+          int_mask = taskENTER_CRITICAL_FROM_ISR(); read_len[index] = 0; taskEXIT_CRITICAL_FROM_ISR(int_mask);
         #else
-          read_len = 0;
+          read_len[index] = 0;
         #endif
         seq[index] = SEQ_UNSET;
       }
@@ -493,7 +495,7 @@ void ISR_VECT receive_callback(uint8_t index, int packet_size) {
   } else {
     // In promiscuous mode, raw packets are
     // output directly to the host
-    read_len = 0;
+    read_len[index] = 0;
 
     getPacketData(selected_radio, packet_size);
 
@@ -1318,10 +1320,10 @@ void loop() {
     #if MCU_VARIANT == MCU_ESP32
       modem_packet_t *modem_packet = NULL;
       if(modem_packet_queue && xQueueReceive(modem_packet_queue, &modem_packet, 0) == pdTRUE && modem_packet) {
-        read_len = modem_packet->len;
+        packet_interface = modem_packet->interface;
+        read_len[packet_interface] = modem_packet->len;
         last_rssi = modem_packet->rssi;
         last_snr_raw = modem_packet->snr_raw;
-        packet_interface = modem_packet->interface;
         memcpy(&pbuf, modem_packet->data, modem_packet->len);
         free(modem_packet);
         modem_packet = NULL;
@@ -1334,11 +1336,11 @@ void loop() {
     #elif MCU_VARIANT == MCU_NRF52
       modem_packet_t *modem_packet = NULL;
       if(modem_packet_queue && xQueueReceive(modem_packet_queue, &modem_packet, 0) == pdTRUE && modem_packet) {
-        memcpy(&pbuf, modem_packet->data, modem_packet->len);
-        read_len = modem_packet->len;
+        packet_interface = modem_packet->interface;
+        read_len[packet_interface] = modem_packet->len;
         last_rssi = modem_packet->rssi;
         last_snr_raw = modem_packet->snr_raw;
-        packet_interface = modem_packet->interface;
+        memcpy(&pbuf, modem_packet->data, modem_packet->len);
         free(modem_packet);
         modem_packet = NULL;
 

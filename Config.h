@@ -90,7 +90,7 @@
 	uint8_t last_rssi_raw   = 0x00;
 	uint8_t last_snr_raw	= 0x80;
 	uint8_t seq[INTERFACE_COUNT];
-	uint16_t read_len		= 0;
+	uint16_t read_len[INTERFACE_COUNT];
 
     bool serial_in_frame = false;
 
