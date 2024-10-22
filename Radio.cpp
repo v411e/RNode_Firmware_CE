@@ -110,6 +110,7 @@ void ISR_VECT onDio0Rise() {
                 // Therefore, the modem is set into receive mode each time a packet is received.
                 interface_obj[i]->receive();
             }
+            break;
         }
     }
     taskEXIT_CRITICAL_FROM_ISR(int_status);
