@@ -1407,7 +1407,7 @@ bool eeprom_model_valid() {
 	#elif BOARD_MODEL == BOARD_RNODE_NG_22
 	if (model == MODEL_A1 || model == MODEL_A6 || model == MODEL_A5 || model == MODEL_AA) {
 	#elif BOARD_MODEL == BOARD_T3S3
-	if (model == MODEL_A1 || model == MODEL_A5 || model == MODEL_A6) {
+	if (model == MODEL_A1 || model == MODEL_A5 || model == MODEL_A6 || model == MODEL_AB || model == MODEL_AC) {
 	#elif BOARD_MODEL == BOARD_TBEAM
 	if (model == MODEL_E4 || model == MODEL_E9 || model == MODEL_E3 || model == MODEL_E8) {
 	#elif BOARD_MODEL == BOARD_TECHO
