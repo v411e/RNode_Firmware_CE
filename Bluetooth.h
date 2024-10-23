@@ -29,8 +29,8 @@
 #elif MCU_VARIANT == MCU_NRF52
   #include <bluefruit.h>
   #include <math.h>
-  #define BLE_MTU 512+3
-  BLEUart SerialBT(BLE_MTU);
+  #define BLE_RX_BUF 6144
+  BLEUart SerialBT(BLE_RX_BUF);
   BLEDis  bledis;
   BLEBas  blebas;
   bool SerialBT_init = false;
@@ -437,7 +437,7 @@ char bt_devname[11];
     cable_state = CABLE_STATE_DISCONNECTED;
     BLEConnection* conn = Bluefruit.Connection(conn_handle);
     conn->requestPHY(BLE_GAP_PHY_2MBPS);
-    conn->requestMtuExchange(BLE_MTU);
+    conn->requestMtuExchange(512+3);
     conn->requestDataLengthUpdate();
 }
 
