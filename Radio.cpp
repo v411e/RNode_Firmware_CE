@@ -2258,73 +2258,73 @@ void sx128x::setTxPower(int level, int outputPin) {
             reg_value = -18;
             break;
         case 1:
-            reg_value = -17;
-            break;
-        case 2:
             reg_value = -16;
             break;
-        case 3:
+        case 2:
             reg_value = -15;
             break;
-        case 4:
+        case 3:
             reg_value = -14;
             break;
-        case 5:
+        case 4:
             reg_value = -13;
             break;
-        case 6:
+        case 5:
             reg_value = -12;
             break;
-        case 7:
-            reg_value = -10;
+        case 6:
+            reg_value = -11;
             break;
-        case 8:
+        case 7:
             reg_value = -9;
             break;
-        case 9:
+        case 8:
             reg_value = -8;
             break;
-        case 10:
+        case 9:
             reg_value = -7;
             break;
-        case 11:
+        case 10:
             reg_value = -6;
             break;
-        case 12:
+        case 11:
             reg_value = -5;
             break;
-        case 13:
+        case 12:
             reg_value = -4;
             break;
-        case 14:
+        case 13:
             reg_value = -3;
             break;
-        case 15:
+        case 14:
             reg_value = -2;
             break;
-        case 16:
+        case 15:
             reg_value = -1;
             break;
-        case 17:
+        case 16:
             reg_value = 0;
             break;
-        case 18:
+        case 17:
             reg_value = 1;
             break;
-        case 19:
+        case 18:
             reg_value = 2;
             break;
-        case 20:
+        case 19:
             reg_value = 3;
             break;
-        case 21:
+        case 20:
             reg_value = 4;
             break;
-        case 22:
+        case 21:
             reg_value = 5;
             break;
-        case 23:
+        case 22:
             reg_value = 6;
+            break;
+        case 23:
+            reg_value = 7;
             break;
         case 24:
             reg_value = 8;
