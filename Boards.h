@@ -78,14 +78,14 @@
   #define MODEL_B4            0xB4 // LilyGO T3 v2.1, 433 MHz
   #define MODEL_B9            0xB9 // LilyGO T3 v2.1, 868 MHz
 
-  #define BOARD_T3S3          0x42 // T3S3 - sold by LilyGO
+  #define BOARD_T3S3          0x43 // T3S3 - sold by LilyGO
   #define MODEL_A1 0xA1            // T3S3 SX1262 868/915 MHz
   #define MODEL_AB 0xAB            // T3S3 SX1276 868/915 MHz
   #define MODEL_A5 0xA5            // T3S3 SX1278 433 MHz
   #define MODEL_AC 0xAC            // T3S3 SX1280 2.4 GHz w/ PA
 
   #define PRODUCT_TECHO 0x15       // LilyGO T-Echo devices
-  #define BOARD_TECHO         0x43
+  #define BOARD_TECHO         0x44
   #define MODEL_16 0x16            // T-Echo 433 MHz
   #define MODEL_17 0x17            // T-Echo 868/915 MHz
 
@@ -111,7 +111,7 @@
   #define BOARD_OPENCOM_XL    0x52
   #define MODEL_21            0x21 // openCom XL, 868/915 MHz
 
-  #define BOARD_E22_ESP32     0x44 // Custom Ebyte E22 board design for meshtastic, source:
+  #define BOARD_E22_ESP32     0x45 // Custom Ebyte E22 board design for meshtastic, source:
                                    // https://github.com/NanoVHF/Meshtastic-DIY/blob/main/Schematics/E-Byte_E22/Mesh_Ebyte_E22-XXXM30S.pdf
 
   #define PRODUCT_HMBRW       0xF0
