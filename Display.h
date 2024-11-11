@@ -1145,7 +1145,7 @@ void draw_disp_area() {
               if (i == 2) dxp += 9*2+6;
               #else
               uint8_t dxp = DISP_H * 0.32;
-              uint8_t numeric = v_str[i]-48; uint8_t bm_offset = numeric*20;
+              uint8_t numeric = v_str[i]-48; uint8_t bm_offset = numeric*5;
               if (i == 2) dxp += 9*2+6;
               #endif
               if (i == 1) dxp += 9*1+4;
