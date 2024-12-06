@@ -728,6 +728,8 @@
           }
       };
       #elif BOARD_VARIANT == MODEL_AC // SX1280 with PA 
+      #define CONFIG_UART_BUFFER_SIZE 40000
+      #define CONFIG_QUEUE_0_SIZE 40000
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1280
