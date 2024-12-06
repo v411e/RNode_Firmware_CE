@@ -102,7 +102,7 @@ void ISR_VECT onDio0Rise() {
             if (interface_obj[i]->getPacketValidity()) {
                 interface_obj[i]->handleDio0Rise();
             }
-            if (interfaces[i] == SX128X) {
+            if ((interfaces[i] == SX128X) || (interfaces[i] == SX1280)) {
                 // On the SX1280, there is a bug which can cause the busy line
                 // to remain high if a high amount of packets are received when
                 // in continuous RX mode. This is documented as Errata 16.1 in
