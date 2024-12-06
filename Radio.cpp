@@ -1385,10 +1385,9 @@ void sx127x::setTxPower(int level, int outputPin) {
     writeRegister(REG_PA_DAC_7X, 0x84);
     writeRegister(REG_PA_CONFIG_7X, PA_BOOST_7X | (level - 2));
   }
-  _txp = level;
 }
 
-int8_t sx127x::getTxPower() { return _txp; }
+int8_t sx127x::getTxPower() { byte txp = readRegister(REG_PA_CONFIG_7X); return ((int8_t)txp) - 126; } // temporary fix for SX127X power weirdness
 
 void sx127x::setFrequency(uint32_t frequency) {
   _frequency = frequency;
