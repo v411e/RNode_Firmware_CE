@@ -262,7 +262,7 @@ release-hashes:
 
 release-tbeam: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:t-beam $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x33\" \"-DBOARD_VARIANT=0xE4\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_tbeam.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_tbeam.boot_app0
 	cp build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.bin build/rnode_firmware_tbeam.bin
 	cp build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_tbeam.bootloader
 	cp build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_tbeam.partitions
@@ -271,7 +271,7 @@ release-tbeam: check_bt_buffers
 
 release-tbeam_sx1262: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:t-beam $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x33\" \"-DBOARD_MODEL=E8\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_tbeam_sx1262.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_tbeam_sx1262.boot_app0
 	cp build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.bin build/rnode_firmware_tbeam_sx1262.bin
 	cp build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_tbeam_sx1262.bootloader
 	cp build/esp32.esp32.t-beam/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_tbeam_sx1262.partitions
@@ -280,7 +280,7 @@ release-tbeam_sx1262: check_bt_buffers
 
 release-lora32_v10: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x39\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v10.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v10.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v10.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v10.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v10.partitions
@@ -289,7 +289,7 @@ release-lora32_v10: check_bt_buffers
 
 release-lora32_v20: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x36\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v20.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v20.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v20.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v20.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v20.partitions
@@ -298,7 +298,7 @@ release-lora32_v20: check_bt_buffers
 
 release-lora32_v21: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x37\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v21.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v21.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v21.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v21.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v21.partitions
@@ -307,7 +307,7 @@ release-lora32_v21: check_bt_buffers
 
 release-lora32_v10_extled: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x39\" \"-DEXTERNAL_LEDS=true\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v10.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v10.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v10.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v10.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v10.partitions
@@ -316,7 +316,7 @@ release-lora32_v10_extled: check_bt_buffers
 
 release-lora32_v20_extled: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x36\" \"-DEXTERNAL_LEDS=true\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v20.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v20.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v20.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v20.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v20.partitions
@@ -325,7 +325,7 @@ release-lora32_v20_extled: check_bt_buffers
 
 release-lora32_v21_extled: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x37\" \"-DEXTERNAL_LEDS=true\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v21.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v21.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v21.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v21.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v21.partitions
@@ -334,7 +334,7 @@ release-lora32_v21_extled: check_bt_buffers
 
 release-lora32_v21_tcxo: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:ttgo-lora32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x37\" \"-DENABLE_TCXO=true\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v21_tcxo.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_lora32v21_tcxo.boot_app0
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bin build/rnode_firmware_lora32v21_tcxo.bin
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_lora32v21_tcxo.bootloader
 	cp build/esp32.esp32.ttgo-lora32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_lora32v21_tcxo.partitions
@@ -343,7 +343,7 @@ release-lora32_v21_tcxo: check_bt_buffers
 
 release-heltec32_v2: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:heltec_wifi_lora_32_V2 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x38\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_heltec32v2.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_heltec32v2.boot_app0
 	cp build/esp32.esp32.heltec_wifi_lora_32_V2/RNode_Firmware_CE.ino.bin build/rnode_firmware_heltec32v2.bin
 	cp build/esp32.esp32.heltec_wifi_lora_32_V2/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_heltec32v2.bootloader
 	cp build/esp32.esp32.heltec_wifi_lora_32_V2/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_heltec32v2.partitions
@@ -384,9 +384,23 @@ release-rnode_ng_21: check_bt_buffers
 	zip --junk-paths ./Release/rnode_firmware_ng21.zip ./Release/esptool/esptool.py ./Release/console_image.bin build/rnode_firmware_ng21.boot_app0 build/rnode_firmware_ng21.bin build/rnode_firmware_ng21.bootloader build/rnode_firmware_ng21.partitions
 	rm -r build
 
+release-techo: release-techo4 release-techo9
+
+release-techo4:
+	arduino-cli compile --fqbn adafruit:nrf52:pca10056 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x44\" \"-DBOARD_VARIANT=0x16\""
+	cp build/adafruit.nrf52.pca10056/RNode_Firmware_CE.ino.hex build/rnode_firmware_techo4.hex
+	adafruit-nrfutil dfu genpkg --dev-type 0x0052 --application build/rnode_firmware_techo4.hex Release/rnode_firmware_techo4.zip
+	rm -r build
+
+release-techo9:
+	arduino-cli compile --fqbn adafruit:nrf52:pca10056 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x44\"  \"-DBOARD_VARIANT=0x17\""
+	cp build/adafruit.nrf52.pca10056/RNode_Firmware_CE.ino.hex build/rnode_firmware_techo9.hex
+	adafruit-nrfutil dfu genpkg --dev-type 0x0052 --application build/rnode_firmware_techo9.hex Release/rnode_firmware_techo9.zip
+	rm -r build
+
 release-t3s3:
 	arduino-cli compile --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc" $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x42\" \"-DBOARD_MODEL=0xAB\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_t3s3.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_t3s3.boot_app0
 	cp build/esp32.esp32.esp32s3/RNode_Firmware_CE.ino.bin build/rnode_firmware_t3s3.bin
 	cp build/esp32.esp32.esp32s3/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_t3s3.bootloader
 	cp build/esp32.esp32.esp32s3/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_t3s3.partitions
@@ -395,7 +409,7 @@ release-t3s3:
 
 release-e22_esp32:
 	arduino-cli compile --fqbn esp32:esp32:esp32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x44\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_esp32_e22.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_esp32_e22.boot_app0
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bin build/rnode_firmware_esp32_e22.bin
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_esp32_e22.bootloader
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_esp32_e22.partitions
@@ -432,7 +446,7 @@ release-tbeam_supreme:
 
 release-featheresp32: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:featheresp32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x34\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_featheresp32.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_featheresp32.boot_app0
 	cp build/esp32.esp32.featheresp32/RNode_Firmware_CE.ino.bin build/rnode_firmware_featheresp32.bin
 	cp build/esp32.esp32.featheresp32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_featheresp32.bootloader
 	cp build/esp32.esp32.featheresp32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_featheresp32.partitions
@@ -441,7 +455,7 @@ release-featheresp32: check_bt_buffers
 
 release-genericesp32: check_bt_buffers
 	arduino-cli compile --fqbn esp32:esp32:esp32 $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x35\""
-	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ESP_IDF_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_esp32_generic.boot_app0
+	cp ~/.arduino15/packages/esp32/hardware/esp32/$(ARDUINO_ESP_CORE_VER)/tools/partitions/boot_app0.bin build/rnode_firmware_esp32_generic.boot_app0
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bin build/rnode_firmware_esp32_generic.bin
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.bootloader.bin build/rnode_firmware_esp32_generic.bootloader
 	cp build/esp32.esp32.esp32/RNode_Firmware_CE.ino.partitions.bin build/rnode_firmware_esp32_generic.partitions
@@ -452,13 +466,16 @@ release-rak4631:
 	arduino-cli compile --fqbn rakwireless:nrf52:WisCoreRAK4631Board $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x51\" \"-DBOARD_VARIANT=0x12\""
 	cp build/rakwireless.nrf52.WisCoreRAK4631Board/RNode_Firmware_CE.ino.hex build/rnode_firmware_rak4631.hex
 	adafruit-nrfutil dfu genpkg --dev-type 0x0052 --application build/rnode_firmware_rak4631.hex Release/rnode_firmware_rak4631.zip
+	rm -r build
 
 release-rak4631_sx1280:
 	arduino-cli compile --fqbn rakwireless:nrf52:WisCoreRAK4631Board $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x51\" \"-DBOARD_VARIANT=0x14\""
 	cp build/rakwireless.nrf52.WisCoreRAK4631Board/RNode_Firmware_CE.ino.hex build/rnode_firmware_rak4631_sx1280.hex
 	adafruit-nrfutil dfu genpkg --dev-type 0x0052 --application build/rnode_firmware_rak4631_sx1280.hex Release/rnode_firmware_rak4631_sx1280.zip
+	rm -r build
 
 release-opencom-xl:
 	arduino-cli compile --fqbn rakwireless:nrf52:WisCoreRAK4631Board $(COMMON_BUILD_FLAGS) --build-property "compiler.cpp.extra_flags=\"-DBOARD_MODEL=0x52\" \"-DBOARD_VARIANT=0x21\""
 	cp build/rakwireless.nrf52.WisCoreRAK4631Board/RNode_Firmware_CE.ino.hex build/rnode_firmware_opencom_xl.hex
 	adafruit-nrfutil dfu genpkg --dev-type 0x0052 --application build/rnode_firmware_opencom_xl.hex Release/rnode_firmware_opencom_xl.zip
+	rm -r build
