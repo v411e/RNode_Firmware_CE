@@ -653,6 +653,10 @@ void kiss_indicate_error(uint8_t error_code) {
 
 void kiss_indicate_radiostate(RadioInterface* radio) {
 	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
+	serial_write(FEND);
 	serial_write(CMD_RADIO_STATE);
 	serial_write(radio->getRadioOnline());
 	serial_write(FEND);
@@ -680,7 +684,11 @@ void kiss_indicate_stat_tx() {
 	//serial_write(FEND);
 }
 
-void kiss_indicate_stat_rssi() {
+void kiss_indicate_stat_rssi(RadioInterface* radio) {
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
     uint8_t packet_rssi_val = (uint8_t)(last_rssi+rssi_offset);
 	serial_write(FEND);
 	serial_write(CMD_STAT_RSSI);
@@ -688,7 +696,11 @@ void kiss_indicate_stat_rssi() {
 	serial_write(FEND);
 }
 
-void kiss_indicate_stat_snr() {
+void kiss_indicate_stat_snr(RadioInterface* radio) {
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
 	serial_write(FEND);
 	serial_write(CMD_STAT_SNR);
 	escaped_serial_write(last_snr_raw);
@@ -697,6 +709,10 @@ void kiss_indicate_stat_snr() {
 
 void kiss_indicate_radio_lock(RadioInterface* radio) {
 	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
+	serial_write(FEND);
 	serial_write(CMD_RADIO_LOCK);
 	serial_write(radio->getRadioLock());
 	serial_write(FEND);
@@ -704,12 +720,20 @@ void kiss_indicate_radio_lock(RadioInterface* radio) {
 
 void kiss_indicate_spreadingfactor(RadioInterface* radio) {
 	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
+	serial_write(FEND);
 	serial_write(CMD_SF);
 	serial_write(radio->getSpreadingFactor());
 	serial_write(FEND);
 }
 
 void kiss_indicate_codingrate(RadioInterface* radio) {
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
 	serial_write(FEND);
 	serial_write(CMD_CR);
 	serial_write(radio->getCodingRate4());
@@ -726,6 +750,10 @@ void kiss_indicate_implicit_length() {
 void kiss_indicate_txpower(RadioInterface* radio) {
     int8_t txp = radio->getTxPower();
 	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
+	serial_write(FEND);
 	serial_write(CMD_TXPOWER);
 	serial_write(txp);
 	serial_write(FEND);
@@ -733,6 +761,10 @@ void kiss_indicate_txpower(RadioInterface* radio) {
 
 void kiss_indicate_bandwidth(RadioInterface* radio) {
     uint32_t bw = radio->getSignalBandwidth();
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
 	serial_write(FEND);
 	serial_write(CMD_BANDWIDTH);
 	escaped_serial_write(bw>>24);
@@ -744,6 +776,10 @@ void kiss_indicate_bandwidth(RadioInterface* radio) {
 
 void kiss_indicate_frequency(RadioInterface* radio) {
     uint32_t freq = radio->getFrequency();
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
 	serial_write(FEND);
 	serial_write(CMD_FREQUENCY);
 	escaped_serial_write(freq>>24);
@@ -765,6 +801,10 @@ void kiss_indicate_interface(int index) {
 void kiss_indicate_st_alock(RadioInterface* radio) {
 	uint16_t at = (uint16_t)(radio->getSTALock()*100*100);
 	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
+	serial_write(FEND);
 	serial_write(CMD_ST_ALOCK);
 	escaped_serial_write(at>>8);
 	escaped_serial_write(at);
@@ -773,6 +813,10 @@ void kiss_indicate_st_alock(RadioInterface* radio) {
 
 void kiss_indicate_lt_alock(RadioInterface* radio) {
 	uint16_t at = (uint16_t)(radio->getLTALock()*100*100);
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
 	serial_write(FEND);
 	serial_write(CMD_LT_ALOCK);
 	escaped_serial_write(at>>8);
@@ -785,6 +829,10 @@ void kiss_indicate_channel_stats(RadioInterface* radio) {
     uint16_t atl = (uint16_t)(radio->getLongtermAirtime()*100*100);
     uint16_t cls = (uint16_t)(radio->getTotalChannelUtil()*100*100);
     uint16_t cll = (uint16_t)(radio->getLongtermChannelUtil()*100*100);
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
     serial_write(FEND);
     serial_write(CMD_STAT_CHTM);
     escaped_serial_write(ats>>8);
@@ -804,6 +852,10 @@ void kiss_indicate_phy_stats(RadioInterface* radio) {
     uint16_t prs = (uint16_t)(radio->getPreambleLength()+4);
     uint16_t prt = (uint16_t)((radio->getPreambleLength()+4)*radio->getSymbolTime());
     uint16_t cst = (uint16_t)(radio->getCSMASlotMS());
+	serial_write(FEND);
+    serial_write(CMD_SEL_INT);
+    serial_write(radio->getIndex());
+	serial_write(FEND);
     serial_write(FEND);
     serial_write(CMD_STAT_PHYPRM);
     escaped_serial_write(lst>>8);
@@ -1083,80 +1135,6 @@ uint8_t getRandom(RadioInterface* radio) {
 	} else {
 		return 0x00;
 	}
-}
-
-uint8_t getInterfaceIndex(uint8_t byte) {
-    switch (byte) {
-        case CMD_INT0_DATA:
-        case CMD_SEL_INT0:
-            return 0;
-        case CMD_INT1_DATA:
-        case CMD_SEL_INT1:
-            return 1;
-        case CMD_INT2_DATA:
-        case CMD_SEL_INT2:
-            return 2;
-        case CMD_INT3_DATA:
-        case CMD_SEL_INT3:
-            return 3;
-        case CMD_INT4_DATA:
-        case CMD_SEL_INT4:
-            return 4;
-        case CMD_INT5_DATA:
-        case CMD_SEL_INT5:
-            return 5;
-        case CMD_INT6_DATA:
-        case CMD_SEL_INT6:
-            return 6;
-        case CMD_INT7_DATA:
-        case CMD_SEL_INT7:
-            return 7;
-        case CMD_INT8_DATA:
-        case CMD_SEL_INT8:
-            return 8;
-        case CMD_INT9_DATA:
-        case CMD_SEL_INT9:
-            return 9;
-        case CMD_INT10_DATA:
-        case CMD_SEL_INT10:
-            return 10;
-        case CMD_INT11_DATA:
-        case CMD_SEL_INT11:
-            return 11;
-        default:
-            return 0;
-    }
-}
-
-uint8_t getInterfaceCommandByte(uint8_t index) {
-    switch (index) {
-        case 0:
-            return CMD_INT0_DATA;
-        case 1:
-            return CMD_INT1_DATA;
-        case 2:
-            return CMD_INT2_DATA;
-        case 3:
-            return CMD_INT3_DATA;
-        case 4:
-            return CMD_INT4_DATA;
-        case 5:
-            return CMD_INT5_DATA;
-        case 6:
-            return CMD_INT6_DATA;
-        case 7:
-            return CMD_INT7_DATA;
-        case 8:
-            return CMD_INT8_DATA;
-        case 9:
-            return CMD_INT9_DATA;
-        case 10:
-            return CMD_INT10_DATA;
-        case 11:
-            return CMD_INT11_DATA;
-        default:
-            return 0;
-    }
 }
 
 uint16_t getQueueSize(uint8_t index) {

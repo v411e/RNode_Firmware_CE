@@ -1094,7 +1094,7 @@ sx127x::sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int mis
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
   _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso),  _reset(reset), _dio0(dio0),
-  _busy(busy), _frequency(0), _packetIndex(0), _preinit_done(false)
+  _busy(busy), _frequency(0), _packetIndex(0), _preinit_done(false), _bw(0)
 { 
     setTimeout(0); 
     // TODO, figure out why this has to be done. Using the index to reference the
@@ -1384,10 +1384,12 @@ void sx127x::setTxPower(int level, int outputPin) {
 
     writeRegister(REG_PA_DAC_7X, 0x84);
     writeRegister(REG_PA_CONFIG_7X, PA_BOOST_7X | (level - 2));
+    _txp = level;
   }
 }
 
-int8_t sx127x::getTxPower() { byte txp = readRegister(REG_PA_CONFIG_7X); return ((int8_t)txp) - 126; } // temporary fix for SX127X power weirdness
+//int8_t sx127x::getTxPower() { return readRegister(REG_PA_CONFIG_7X) - 126; }
+int8_t sx127x::getTxPower() { return _txp; }
 
 void sx127x::setFrequency(uint32_t frequency) {
   _frequency = frequency;
@@ -1409,7 +1411,12 @@ uint32_t sx127x::getFrequency() {
   uint64_t frm = (uint64_t)frf*32000000;
   uint32_t frequency = (frm >> 19);
 
-  return frequency;
+  // TODO, figure out why frequency from module is slightly wrong
+  if (_frequency != frequency) {
+      return _frequency;
+  } else {
+      return frequency;
+  }
 }
 
 void sx127x::setSpreadingFactor(int sf) {
@@ -1436,20 +1443,26 @@ uint8_t sx127x::getSpreadingFactor()
 }
 
 uint32_t sx127x::getSignalBandwidth() {
-  byte bw = (readRegister(REG_MODEM_CONFIG_1_7X) >> 4);
-  switch (bw) {
-    case 0: return 7.8E3;
-    case 1: return 10.4E3;
-    case 2: return 15.6E3;
-    case 3: return 20.8E3;
-    case 4: return 31.25E3;
-    case 5: return 41.7E3;
-    case 6: return 62.5E3;
-    case 7: return 125E3;
-    case 8: return 250E3;
-    case 9: return 500E3; }
+    uint8_t bw;
+    if (_radio_online) {
+      bw = (readRegister(REG_MODEM_CONFIG_1_7X) >> 4);
+    } else {
+        bw = _bw;
+    }
+    switch (bw) {
+        case 0: return 7.8E3;
+        case 1: return 10.4E3;
+        case 2: return 15.6E3;
+        case 3: return 20.8E3;
+        case 4: return 31.25E3;
+        case 5: return 41.7E3;
+        case 6: return 62.5E3;
+        case 7: return 125E3;
+        case 8: return 250E3;
+        case 9: return 500E3;
+    }
 
-  return 0;
+    return 0;
 }
 
 void sx127x::setSignalBandwidth(uint32_t sbw) {
@@ -1477,6 +1490,7 @@ void sx127x::setSignalBandwidth(uint32_t sbw) {
   }
 
   writeRegister(REG_MODEM_CONFIG_1_7X, (readRegister(REG_MODEM_CONFIG_1_7X) & 0x0f) | (bw << 4));
+  _bw = bw;
   handleLowDataRate();
   optimizeModemSensitivity();
 }

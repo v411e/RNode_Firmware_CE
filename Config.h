@@ -80,8 +80,6 @@
 	bool memory_low    = false;
 	uint8_t implicit_l = 0;
 
-    uint8_t packet_interface = 0xFF;
-
 	uint8_t op_mode   = MODE_HOST;
 	uint8_t model     = 0x00;
 	uint8_t hwrev     = 0x00;
