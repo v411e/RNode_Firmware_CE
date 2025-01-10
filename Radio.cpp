@@ -1162,14 +1162,16 @@ uint8_t ISR_VECT sx127x::singleTransfer(uint8_t address, uint8_t value) {
 
 int sx127x::begin() {
   if (_reset != -1) {
-    pinMode(_reset, OUTPUT);
+      pinMode(_reset, OUTPUT);
 
-    // Perform reset
-    digitalWrite(_reset, LOW);
-    delay(10);
-    digitalWrite(_reset, HIGH);
-    delay(10);
+      // Perform reset
+      digitalWrite(_reset, LOW);
+      delay(10);
+      digitalWrite(_reset, HIGH);
+      delay(10);
   }
+
+  sleep();
 
   if (_busy != -1) { pinMode(_busy, INPUT); }
 
@@ -1177,8 +1179,11 @@ int sx127x::begin() {
     if (!preInit()) { return false; }
   }
 
-  sleep();
   setFrequency(_frequency);
+  setSignalBandwidth(_bw);
+  setSpreadingFactor(_sf);
+  setCodingRate4(_cr);
+  setTxPower(_txp);
 
   // set base addresses
   writeRegister(REG_FIFO_TX_BASE_ADDR_7X, 0);
@@ -1190,7 +1195,6 @@ int sx127x::begin() {
 
   setSyncWord(SYNC_WORD_7X);
   enableCrc();
-  setTxPower(2);
 
   standby();
 
@@ -1201,10 +1205,8 @@ int sx127x::begin() {
 
 void sx127x::end() {
   sleep();
-  _spiModem->end();
   _bitrate = 0;
   _radio_online = false;
-  _preinit_done = false;
 }
 
 int sx127x::beginPacket(int implicitHeader) {
@@ -1377,7 +1379,7 @@ void sx127x::setTxPower(int level, int outputPin) {
 
     writeRegister(REG_PA_DAC_7X, 0x84);
     writeRegister(REG_PA_CONFIG_7X, 0x70 | level);
-
+    _txp = level;
   } else {
     if (level < 2) { level = 2; }
     else if (level > 17) { level = 17; }
@@ -1388,11 +1390,11 @@ void sx127x::setTxPower(int level, int outputPin) {
   }
 }
 
-//int8_t sx127x::getTxPower() { return readRegister(REG_PA_CONFIG_7X) - 126; }
-int8_t sx127x::getTxPower() { return _txp; }
+int8_t sx127x::getTxPower() { return readRegister(REG_PA_CONFIG_7X) - 126; }
 
 void sx127x::setFrequency(uint32_t frequency) {
   _frequency = frequency;
+
   uint32_t frf = ((uint64_t)frequency << 19) / 32000000;
 
   writeRegister(REG_FRF_MSB_7X, (uint8_t)(frf >> 16));
@@ -1403,35 +1405,23 @@ void sx127x::setFrequency(uint32_t frequency) {
 }
 
 uint32_t sx127x::getFrequency() {
-  uint8_t msb = readRegister(REG_FRF_MSB_7X);
-  uint8_t mid = readRegister(REG_FRF_MID_7X);
-  uint8_t lsb = readRegister(REG_FRF_LSB_7X);
-
-  uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | (uint32_t)lsb;
-  uint64_t frm = (uint64_t)frf*32000000;
-  uint32_t frequency = (frm >> 19);
-
-  // TODO, figure out why frequency from module is slightly wrong
-  if (_frequency != frequency) {
-      return _frequency;
-  } else {
-      return frequency;
-  }
+  return _frequency;
 }
 
 void sx127x::setSpreadingFactor(int sf) {
   if (sf < 6) { sf = 6; }
   else if (sf > 12) { sf = 12; }
 
+  _sf = sf;
+
   if (sf == 6) {
-    writeRegister(REG_DETECTION_OPTIMIZE_7X, 0xc5);
-    writeRegister(REG_DETECTION_THRESHOLD_7X, 0x0c);
+      writeRegister(REG_DETECTION_OPTIMIZE_7X, 0xc5);
+      writeRegister(REG_DETECTION_THRESHOLD_7X, 0x0c);
   } else {
-    writeRegister(REG_DETECTION_OPTIMIZE_7X, 0xc3);
-    writeRegister(REG_DETECTION_THRESHOLD_7X, 0x0a);
+      writeRegister(REG_DETECTION_OPTIMIZE_7X, 0xc3);
+      writeRegister(REG_DETECTION_THRESHOLD_7X, 0x0a);
   }
 
-  _sf = sf;
 
   writeRegister(REG_MODEM_CONFIG_2_7X, (readRegister(REG_MODEM_CONFIG_2_7X) & 0x0f) | ((sf << 4) & 0xf0));
   handleLowDataRate();
@@ -1443,26 +1433,7 @@ uint8_t sx127x::getSpreadingFactor()
 }
 
 uint32_t sx127x::getSignalBandwidth() {
-    uint8_t bw;
-    if (_radio_online) {
-      bw = (readRegister(REG_MODEM_CONFIG_1_7X) >> 4);
-    } else {
-        bw = _bw;
-    }
-    switch (bw) {
-        case 0: return 7.8E3;
-        case 1: return 10.4E3;
-        case 2: return 15.6E3;
-        case 3: return 20.8E3;
-        case 4: return 31.25E3;
-        case 5: return 41.7E3;
-        case 6: return 62.5E3;
-        case 7: return 125E3;
-        case 8: return 250E3;
-        case 9: return 500E3;
-    }
-
-    return 0;
+    return _bw;
 }
 
 void sx127x::setSignalBandwidth(uint32_t sbw) {
@@ -1490,7 +1461,7 @@ void sx127x::setSignalBandwidth(uint32_t sbw) {
   }
 
   writeRegister(REG_MODEM_CONFIG_1_7X, (readRegister(REG_MODEM_CONFIG_1_7X) & 0x0f) | (bw << 4));
-  _bw = bw;
+  _bw = sbw;
   handleLowDataRate();
   optimizeModemSensitivity();
 }

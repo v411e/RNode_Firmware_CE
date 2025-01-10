@@ -546,7 +546,7 @@ private:
   bool _preinit_done;
   uint8_t _sf;
   uint8_t _cr;
-  uint8_t _bw;
+  uint32_t _bw;
 };
 
 class sx128x : public RadioInterface {
