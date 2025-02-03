@@ -1098,31 +1098,28 @@
   
   #elif MCU_VARIANT == MCU_NRF52
      #if BOARD_MODEL == BOARD_TECHO
-      #define VALIDATE_FIRMWARE false
+      #define _PINNUM(port, pin) ((port) * 32 + (pin))
       #define HAS_INPUT true
-      //#define GPS_BAUD_RATE 115200
-      //#define PIN_GPS_TX 41
-      //#define PIN_GPS_RX 40
       #define EEPROM_SIZE 296
       #define EEPROM_OFFSET EEPROM_SIZE-EEPROM_RESERVED
-      //#define HAS_EEPROM true
-      //#define HAS_SD true
+      #define HAS_EEPROM false
+      #define HAS_SD false
       #define HAS_DISPLAY true
       #define DISPLAY EINK_BW
       #define DISPLAY_MODEL GxEPD2_154_D67
-      //#define HAS_CONSOLE true
-      //#define HAS_TXCO true
-      //#define HAS_BLE true
-      //#define HAS_PMU true
-      #define CONFIG_UART_BUFFER_SIZE 40000
+      #define BLE_MANUFACTURER "LilyGO"
+      #define BLE_MODEL "T-Echo"
+      #define HAS_CONSOLE false
+      #define HAS_BLE true
+      #define HAS_PMU true
+      #define CONFIG_UART_BUFFER_SIZE 32768
       #define CONFIG_QUEUE_0_SIZE 6144
       #define CONFIG_QUEUE_MAX_LENGTH 200
-      //#define BLE_MANUFACTURER "LilyGO"
-      //#define BLE_MODEL "T-Echo"
       #define INTERFACE_COUNT 1
       //#define I2C_SDA 26
       //#define I2C_SCL 27
       #define CONFIG_QUEUE_1_SIZE 40000
+      #define HAS_BACKLIGHT true
       // first interface in list is the primary
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
@@ -1159,12 +1156,24 @@
       const int pin_disp_mosi = 29;
       const int pin_disp_miso = -1;
 
-      #define HAS_BACKLIGHT true
-      const int pin_btn_usr1 = 42;
+      //#define GPS_BAUD_RATE 115200
+      //#define PIN_GPS_TX 41
+      //#define PIN_GPS_RX 40
+
+      const int pin_btn_usr1 = _PINNUM(1, 10);
+      const int pin_btn_touch = _PINNUM(0, 11);
+
       const int pin_backlight = 43;
 
-      const int pin_led_rx = LED_BLUE;
-      const int pin_led_tx = LED_RED;
+      #define LED_ON LOW
+      #define LED_OFF HIGH
+      #define PIN_LED_GREEN _PINNUM(1, 1)
+      #define PIN_LED_RED   _PINNUM(1, 3)
+      #define PIN_LED_BLUE  _PINNUM(0, 14)
+      #define PIN_VEXT_EN _PINNUM(0, 12)
+      const int pin_led_rx = PIN_LED_BLUE;
+      const int pin_led_tx = PIN_LED_RED;
+
     #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
       #define HAS_EEPROM false
       #define HAS_DISPLAY false 

@@ -600,6 +600,7 @@ bool startRadio(RadioInterface* radio) {
         return true;
       }
   }
+  return false;
 }
 
 void stopRadio(RadioInterface* radio) {
