@@ -105,12 +105,21 @@ void setup() {
 
       pinMode(DISPLAY_BL_PIN, OUTPUT);
     #endif
-  #endif
 
-  #if MCU_VARIANT == MCU_NRF52
-    if (!eeprom_begin()) {
-        Serial.write("EEPROM initialisation failed.\r\n");
-    }
+  #elif MCU_VARIANT == MCU_NRF52
+    #if BOARD_MODEL == BOARD_TECHO
+      delay(200);
+      pinMode(PIN_VEXT_EN, OUTPUT);
+      digitalWrite(PIN_VEXT_EN, HIGH);
+      pinMode(pin_btn_usr1, INPUT_PULLUP);
+      pinMode(pin_btn_touch, INPUT_PULLUP);
+      pinMode(PIN_LED_RED, OUTPUT);
+      pinMode(PIN_LED_GREEN, OUTPUT);
+      pinMode(PIN_LED_BLUE, OUTPUT);
+      delay(200);
+    #endif
+
+    if (!eeprom_begin()) { Serial.write("EEPROM initialisation failed.\r\n"); }
   #endif
 
   // Seed the PRNG for CSMA R-value selection
@@ -135,7 +144,7 @@ void setup() {
     led_init();
   #endif
 
-  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_RNODE_NG_22 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_OPENCOM_XL
+  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_HELTEC_T114 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_OPENCOM_XL
   // Some boards need to wait until the hardware UART is set up before booting
   // the full firmware. In the case of the RAK4631/TECHO, the line below will wait
   // until a serial connection is actually established with a master. Thus, it
@@ -187,7 +196,6 @@ void setup() {
   // Create and configure interface objects
   for (uint8_t i = 0; i < INTERFACE_COUNT; i++) {
       switch (interfaces[i]) {
-          case SX126X:
           case SX1262:
           {
               sx126x* obj;
@@ -209,7 +217,6 @@ void setup() {
             break;
           }
 
-          case SX127X:
           case SX1276:
           case SX1278:
           {
@@ -230,7 +237,6 @@ void setup() {
             break;
           }
 
-          case SX128X:
           case SX1280:
           {
               sx128x* obj;
@@ -257,16 +263,20 @@ void setup() {
       }
   }
 
+  #if BOARD_MODEL == BOARD_T3S3 && BOARD_VARIANT == MODEL_AC
+    // Fix weird radio not found bug on T3S3 SX1280
+    delay(300);
+    interface_obj[0]->reset();
+    delay(100);
+  #endif
+
     // Check installed transceiver chip(s) and probe boot parameters. If any of
     // the configured modems cannot be initialised, do not boot
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         switch (interfaces[i]) {
-            case SX126X:
             case SX1262:
-            case SX127X:
             case SX1276:
             case SX1278:
-            case SX128X:
             case SX1280:
                 selected_radio = interface_obj[i];
                 break;
@@ -277,20 +287,24 @@ void setup() {
         }
         if (selected_radio->preInit()) {
           modems_installed = true;
-          uint32_t lfr = selected_radio->getFrequency();
-          if (lfr == 0) {
-            // Normal boot
-          } else if (lfr == M_FRQ_R) {
-            // Quick reboot
-            #if HAS_CONSOLE
-              if (rtc_get_reset_reason(0) == POWERON_RESET) {
-                console_active = true;
+          #if HAS_INPUT
+            // Skip quick-reset console activation
+          #else
+              uint32_t lfr = selected_radio->getFrequency();
+              if (lfr == 0) {
+                // Normal boot
+              } else if (lfr == M_FRQ_R) {
+                // Quick reboot
+                #if HAS_CONSOLE
+                  if (rtc_get_reset_reason(0) == POWERON_RESET) {
+                    console_active = true;
+                  }
+                #endif
+              } else {
+                // Unknown boot
               }
-            #endif
-          } else {
-            // Unknown boot
-          }
-          selected_radio->setFrequency(M_FRQ_S);
+              selected_radio->setFrequency(M_FRQ_S);
+          #endif
         } else {
           modems_installed = false;
         }
@@ -306,13 +320,23 @@ void setup() {
     if (eeprom_read(eeprom_addr(ADDR_CONF_DSET)) != CONF_OK_BYTE) {
     #endif
       eeprom_update(eeprom_addr(ADDR_CONF_DSET), CONF_OK_BYTE);
-      eeprom_update(eeprom_addr(ADDR_CONF_DINT), 0xFF);
+      #if BOARD_MODEL == BOARD_TECHO
+        eeprom_update(eeprom_addr(ADDR_CONF_DINT), 0x03);
+      #else
+        eeprom_update(eeprom_addr(ADDR_CONF_DINT), 0xFF);
+      #endif
     }
-    #if DISPLAY == EINK_BW || DISPLAY == EINK_3C
-    // Poll and process incoming serial commands whilst e-ink display is
-    // refreshing to make device still seem responsive
-    display_add_callback(process_serial);
+    #if BOARD_MODEL == BOARD_OPENCOM_XL && (DISPLAY == EINK_BW || DISPLAY == EINK_3C)
+      // On this board it isn't possible to run the main loop whilst the
+      // display is updating as the SPI pins are shared between the display and
+      // secondary modem. Because running the main loop causes a lockup, we
+      // just run the serial poll loop instead.
+      display_add_callback(process_serial);
+    #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
+      display_add_callback(work_while_waiting);
     #endif
+
+    display_unblank();
     disp_ready = display_init();
     update_display();
   #endif
@@ -336,6 +360,25 @@ void setup() {
       kiss_indicate_reset();
     }
 
+    for (int i = 0; i < INTERFACE_COUNT; i++) {
+        selected_radio = interface_obj[i];
+        if (interfaces[i] == SX1280) {
+            selected_radio->setAvdInterference(false);
+        }
+        if (selected_radio->getAvdInterference()) {
+          #if HAS_EEPROM
+            uint8_t ia_conf = EEPROM.read(eeprom_addr(ADDR_CONF_DIA));
+            if (ia_conf == 0x00) { selected_radio->setAvdInterference(true); }
+            else                 { selected_radio->setAvdInterference(false); }
+          #elif MCU_VARIANT == MCU_NRF52
+            uint8_t ia_conf = eeprom_read(eeprom_addr(ADDR_CONF_DIA));
+            if (ia_conf == 0x00) { selected_radio->setAvdInterference(true); }
+            else                 { selected_radio->setAvdInterference(false); }
+          #endif
+        }
+    }
+
+
   // Validate board health, EEPROM and config
   validate_status();
 }
@@ -349,7 +392,6 @@ void lora_receive(RadioInterface* radio) {
 }
 
 inline void kiss_write_packet(int index) {
-
   // Print index of interface the packet came from
   serial_write(FEND);
   serial_write(CMD_SEL_INT);
@@ -516,52 +558,56 @@ bool startRadio(RadioInterface* radio) {
   update_radio_lock(radio);
   
   if (modems_installed && !console_active) {
-    if (!radio->getRadioLock() && hw_ready) {
-      if (!radio->begin()) {
-        // The radio could not be started.
-        // Indicate this failure over both the
-        // serial port and with the onboard LEDs
-        kiss_indicate_error(ERROR_INITRADIO);
-        led_indicate_error(0);
-        return false;
+    if (!radio->getRadioOnline()) {
+        if (!radio->getRadioLock() && hw_ready) {
+          if (!radio->begin()) {
+            // The radio could not be started.
+            // Indicate this failure over both the
+            // serial port and with the onboard LEDs
+            kiss_indicate_error(ERROR_INITRADIO);
+            led_indicate_error(0);
+            return false;
+          } else {
+            radio->enableCrc();
+
+            radio->onReceive(receive_callback);
+
+            radio->updateBitrate();
+            sort_interfaces();
+            kiss_indicate_phy_stats(radio);
+
+            lora_receive(radio);
+
+            // Flash an info pattern to indicate
+            // that the radio is now on
+            kiss_indicate_radiostate(radio);
+            led_indicate_info(3);
+            return true;
+          }
+
+        } else {
+          // Flash a warning pattern to indicate
+          // that the radio was locked, and thus
+          // not started
+          kiss_indicate_radiostate(radio);
+          led_indicate_warning(3);
+          return false;
+        }
       } else {
-        radio->enableCrc();
-
-        radio->onReceive(receive_callback);
-
-        radio->updateBitrate();
-        sort_interfaces();
-        kiss_indicate_phy_stats(radio);
-
-        lora_receive(radio);
-
-        // Flash an info pattern to indicate
-        // that the radio is now on
+        // If radio is already on, we silently
+        // ignore the request.
         kiss_indicate_radiostate(radio);
-        led_indicate_info(3);
         return true;
       }
-
-    } else {
-      // Flash a warning pattern to indicate
-      // that the radio was locked, and thus
-      // not started
-      kiss_indicate_radiostate(radio);
-      led_indicate_warning(3);
-      return false;
-    }
-  } else {
-    // If radio is already on, we silently
-    // ignore the request.
-    kiss_indicate_radiostate(radio);
-    return true;
   }
 }
 
 void stopRadio(RadioInterface* radio) {
-  radio->end();
-  sort_interfaces();
-  kiss_indicate_radiostate(radio);
+  if (radio->getRadioOnline()) {
+      radio->end();
+      sort_interfaces();
+      kiss_indicate_radiostate(radio);
+  }
 }
 
 void update_radio_lock(RadioInterface* radio) {
@@ -574,14 +620,14 @@ void update_radio_lock(RadioInterface* radio) {
 
 // Check if the queue is full for the selected radio.
 // Returns true if full, false if not
-bool queueFull(RadioInterface* radio) {
+bool queue_full(RadioInterface* radio) {
   return (queue_height[radio->getIndex()] >= (CONFIG_QUEUE_MAX_LENGTH) || queued_bytes[radio->getIndex()] >= (getQueueSize(radio->getIndex())));
 }
 
 volatile bool queue_flushing = false;
 
 // Flushes all packets for the interface
-void flushQueue(RadioInterface* radio) {
+void flush_queue(RadioInterface* radio) {
     uint8_t index = radio->getIndex();
   if (!queue_flushing) {
     queue_flushing = true;
@@ -607,13 +653,47 @@ void flushQueue(RadioInterface* radio) {
     lora_receive(radio);
     led_tx_off();
 
-    radio->setPostTxYieldTimeout(millis()+(lora_post_tx_yield_slots*selected_radio->getCSMASlotMS()));
   }
 
   queue_height[index] = 0;
   queued_bytes[index] = 0;
   selected_radio->updateAirtime();
   queue_flushing = false;
+}
+
+void pop_queue(RadioInterface* radio) {
+    uint8_t index = radio->getIndex();
+  if (!queue_flushing) {
+    queue_flushing = true;
+    led_tx_on(); uint16_t processed = 0;
+
+    #if MCU_VARIANT == MCU_ESP32 || MCU_VARIANT == MCU_NRF52
+    if (!fifo16_isempty(&packet_starts[index])) {
+    #else
+    if (!fifo16_isempty_locked(&packet_starts[index])) {
+    #endif
+
+      uint16_t start = fifo16_pop(&packet_starts[index]);
+      uint16_t length = fifo16_pop(&packet_lengths[index]);
+      if (length >= MIN_L && length <= MTU) {
+        for (uint16_t i = 0; i < length; i++) {
+          uint16_t pos = (start+i)%getQueueSize(index);
+          tbuf[i] = packet_queue[index][pos];
+        }
+
+        transmit(radio, length); processed++;
+      }
+      queue_height[index] -= processed;
+      queued_bytes[index] -= length;
+    }
+
+    lora_receive(radio); led_tx_off();
+  }
+
+  radio->updateAirtime();
+
+  queue_flushing = false;
+
   #if HAS_DISPLAY
     display_tx = true;
   #endif
@@ -641,7 +721,7 @@ void transmit(RadioInterface* radio, uint16_t size) {
         // Only start a new packet if this is a split packet and it has
         // exceeded the length of a single packet
         if (written == 255 && header & 0x0F) {
-          radio->endPacket(); radio->addAirtime(written);
+          radio->endPacket(); radio->addAirtime();
           radio->beginPacket();
           radio->write(header);
           written = 1;
@@ -654,7 +734,7 @@ void transmit(RadioInterface* radio, uint16_t size) {
         led_indicate_error(5);
         hard_reset();
       }
-      radio->addAirtime(written);
+      radio->addAirtime();
 
     } else {
       // In promiscuous mode, we only send out
@@ -681,7 +761,7 @@ void transmit(RadioInterface* radio, uint16_t size) {
 
         written++;
       }
-      radio->endPacket(); radio->addAirtime(written);
+      radio->endPacket(); radio->addAirtime();
     }
     last_tx = millis();
   } else {
@@ -690,7 +770,7 @@ void transmit(RadioInterface* radio, uint16_t size) {
   }
 }
 
-void serialCallback(uint8_t sbyte) {
+void serial_callback(uint8_t sbyte) {
   if (IN_FRAME && sbyte == FEND && 
             command == CMD_DATA) {
     IN_FRAME = false;
@@ -765,9 +845,9 @@ void serialCallback(uint8_t sbyte) {
         }
 
         if (frame_len == 4) {
+          selected_radio = interface_obj[interface];
           uint32_t freq = (uint32_t)cmdbuf[0] << 24 | (uint32_t)cmdbuf[1] << 16 | (uint32_t)cmdbuf[2] << 8 | (uint32_t)cmdbuf[3];
 
-          selected_radio = interface_obj[interface];
           if (freq == 0) {
             kiss_indicate_frequency(selected_radio);
           } else {
@@ -789,9 +869,8 @@ void serialCallback(uint8_t sbyte) {
         }
 
         if (frame_len == 4) {
-          uint32_t bw = (uint32_t)cmdbuf[0] << 24 | (uint32_t)cmdbuf[1] << 16 | (uint32_t)cmdbuf[2] << 8 | (uint32_t)cmdbuf[3];
-
           selected_radio = interface_obj[interface];
+          uint32_t bw = (uint32_t)cmdbuf[0] << 24 | (uint32_t)cmdbuf[1] << 16 | (uint32_t)cmdbuf[2] << 8 | (uint32_t)cmdbuf[3];
 
           if (bw == 0) {
             kiss_indicate_bandwidth(selected_radio);
@@ -873,7 +952,6 @@ void serialCallback(uint8_t sbyte) {
       }
       interface = 0;
     } else if (command == CMD_ST_ALOCK) {
-      selected_radio = interface_obj[interface];
       if (sbyte == FESC) {
             ESCAPE = true;
         } else {
@@ -886,6 +964,7 @@ void serialCallback(uint8_t sbyte) {
         }
 
         if (frame_len == 2) {
+          selected_radio = interface_obj[interface];
           uint16_t at = (uint16_t)cmdbuf[0] << 8 | (uint16_t)cmdbuf[1];
 
           if (at == 0) {
@@ -896,10 +975,9 @@ void serialCallback(uint8_t sbyte) {
             selected_radio->setSTALock(st_airtime_limit);
           }
           kiss_indicate_st_alock(selected_radio);
+          interface = 0;
         }
-        interface = 0;
     } else if (command == CMD_LT_ALOCK) {
-      selected_radio = interface_obj[interface];
       if (sbyte == FESC) {
             ESCAPE = true;
         } else {
@@ -912,6 +990,7 @@ void serialCallback(uint8_t sbyte) {
         }
 
         if (frame_len == 2) {
+          selected_radio = interface_obj[interface];
           uint16_t at = (uint16_t)cmdbuf[0] << 8 | (uint16_t)cmdbuf[1];
 
           if (at == 0) {
@@ -922,8 +1001,8 @@ void serialCallback(uint8_t sbyte) {
             selected_radio->setLTALock(lt_airtime_limit);
           }
           kiss_indicate_lt_alock(selected_radio);
+          interface = 0;
         }
-        interface = 0;
     } else if (command == CMD_STAT_RX) {
       kiss_indicate_stat_rx();
     } else if (command == CMD_STAT_TX) {
@@ -957,7 +1036,7 @@ void serialCallback(uint8_t sbyte) {
       kiss_indicate_promisc();
     } else if (command == CMD_READY) {
       selected_radio = interface_obj[interface];
-      if (!queueFull(selected_radio)) {
+      if (!queue_full(selected_radio)) {
         kiss_indicate_ready();
       } else {
         kiss_indicate_not_ready();
@@ -1035,6 +1114,8 @@ void serialCallback(uint8_t sbyte) {
       if (sbyte != 0x00) {
         kiss_indicate_fb();
       }
+    } else if (command == CMD_DISP_READ) {
+      if (sbyte != 0x00) { kiss_indicate_disp(); }
     } else if (command == CMD_DEV_HASH) {
         if (sbyte != 0x00) {
           kiss_indicate_device_hash();
@@ -1117,7 +1198,7 @@ void serialCallback(uint8_t sbyte) {
             }
             display_intensity = sbyte;
             di_conf_save(display_intensity);
-            //display_unblank();
+            display_unblank();
         }
 
       #endif
@@ -1147,9 +1228,47 @@ void serialCallback(uint8_t sbyte) {
                 ESCAPE = false;
             }
             db_conf_save(sbyte);
-            //display_unblank();
+            display_unblank();
         }
 
+      #endif
+    } else if (command == CMD_DISP_ROT) {
+      #if HAS_DISPLAY
+        if (sbyte == FESC) {
+            ESCAPE = true;
+        } else {
+            if (ESCAPE) {
+                if (sbyte == TFEND) sbyte = FEND;
+                if (sbyte == TFESC) sbyte = FESC;
+                ESCAPE = false;
+            }
+            drot_conf_save(sbyte);
+            display_unblank();
+        }
+      #endif
+    } else if (command == CMD_DIS_IA) {
+      if (sbyte == FESC) {
+          ESCAPE = true;
+      } else {
+          if (ESCAPE) {
+              if (sbyte == TFEND) sbyte = FEND;
+              if (sbyte == TFESC) sbyte = FESC;
+              ESCAPE = false;
+          }
+          dia_conf_save(sbyte);
+      }
+    } else if (command == CMD_DISP_RCND) {
+      #if HAS_DISPLAY
+        if (sbyte == FESC) {
+            ESCAPE = true;
+        } else {
+            if (ESCAPE) {
+                if (sbyte == TFEND) sbyte = FEND;
+                if (sbyte == TFESC) sbyte = FESC;
+                ESCAPE = false;
+            }
+            if (sbyte > 0x00) recondition_display = true;
+        }
       #endif
     } else if (command == CMD_NP_INT) {
       #if HAS_NP
@@ -1174,6 +1293,12 @@ void serialCallback(uint8_t sbyte) {
 #if MCU_VARIANT == MCU_ESP32
   portMUX_TYPE update_lock = portMUX_INITIALIZER_UNLOCKED;
 #endif
+
+bool medium_free(RadioInterface* radio) {
+  radio->updateModemStatus();
+  if (radio->getAvdInterference() && radio->getInterference()) { return false; }
+  return !radio->getDCD();
+}
 
 void validate_status() {
   #if MCU_VARIANT == MCU_ESP32
@@ -1283,6 +1408,38 @@ void validate_status() {
   }
 }
 
+void tx_queue_handler(RadioInterface* radio) {
+  if (queue_height[radio->getIndex()] > 0) {
+    if (radio->getCW() == -1) {
+      radio->setCW(random(radio->getCWMin(), radio->getCWMax()));
+      radio->setCWWaitTarget(radio->getCW() * radio->getCSMASlotMS());
+    }
+
+    if (radio->getDifsWaitStart() == 0) {                                                  // DIFS wait not yet started
+      if (medium_free(radio)) { radio->setDifsWaitStart(millis()); return; }                  // Set DIFS wait start time
+      else               { return; } }                                            // Medium not yet free, continue waiting
+    
+    else {                                                                        // We are waiting for DIFS or CW to pass
+      if (!medium_free(radio)) { radio->setDifsWaitStart(0); radio->setCWWaitStart(0); return; }   // Medium became occupied while in DIFS wait, restart waiting when free again
+      else {                                                                      // Medium is free, so continue waiting
+        if (millis() < radio->getDifsWaitStart()+radio->getDifsMS()) { return; }                       // DIFS has not yet passed, continue waiting
+        else {                                                                    // DIFS has passed, and we are now in CW wait
+          if (radio->getCWWaitStart() == 0) { radio->setCWWaitStart(millis()); return; }          // If we haven't started counting CW wait time, do it from now
+          else {                                                                  // If we are already counting CW wait time, add it to the counter
+            radio->addCWWaitPassed(millis()-radio->getCWWaitStart()); radio->setCWWaitStart(millis());
+            if (radio->getCWWaitStatus()) { return; }                      // Contention window wait time has not yet passed, continue waiting
+            else {                                                                // Wait time has passed, flush the queue
+              if (!radio->getLimitRate()) { flush_queue(radio); } else { pop_queue(radio); }
+              radio->resetCWWaitPassed(); radio->setCW(-1); radio->setDifsWaitStart(0); }
+          }
+        }
+      }
+    }
+  }
+}
+
+void work_while_waiting() { loop(); }
+
 void loop() {
     #if MCU_VARIANT == MCU_ESP32
       modem_packet_t *modem_packet = NULL;
@@ -1311,8 +1468,8 @@ void loop() {
         free(modem_packet);
         modem_packet = NULL;
 
-        kiss_indicate_stat_rssi(packet_interface);
-        kiss_indicate_stat_snr(packet_interface);
+        kiss_indicate_stat_rssi(interface_obj[packet_interface]);
+        kiss_indicate_stat_snr(interface_obj[packet_interface]);
         kiss_write_packet(packet_interface);
       }
     #endif
@@ -1321,7 +1478,6 @@ void loop() {
     for (int i = 0; i < INTERFACE_COUNT; i++) {
         selected_radio = interface_obj[i];
         if (selected_radio->getRadioOnline()) {
-            selected_radio->checkModemStatus();
             ready = true;
         }
     }
@@ -1336,30 +1492,11 @@ void loop() {
             // skip this interface
             continue;
         }
+        tx_queue_handler(selected_radio);
+        selected_radio->checkModemStatus();
 
-        if (queue_height[selected_radio->getIndex()] > 0) {
-            uint32_t check_time = millis();
-            if (check_time > selected_radio->getPostTxYieldTimeout()) {
-                if (selected_radio->getDCDWaiting() && (check_time >= selected_radio->getDCDWaitUntil())) { selected_radio->setDCDWaiting(false); }
-                if (!selected_radio->getDCDWaiting()) {
-                    // todo, will the delay here slow down transmission with
-                    // multiple interfaces? needs investigation
-                    for (uint8_t dcd_i = 0; dcd_i < DCD_THRESHOLD*2; dcd_i++) {
-                        delay(STATUS_INTERVAL_MS); selected_radio->updateModemStatus();
-                    }
-
-                    if (!selected_radio->getDCD()) {
-                        uint8_t csma_r = (uint8_t)random(256);
-                        if (selected_radio->getCSMAp() >= csma_r) {
-                            flushQueue(selected_radio);
-                        } else {
-                            selected_radio->setDCDWaiting(true);
-                            selected_radio->setDCDWaitUntil(millis()+selected_radio->getCSMASlotMS());
-                        }
-                    }
-                }
-            }
-        }
+      // debug
+      Serial.write("Bitrate :"); Serial.print(selected_radio->getBitrate()); Serial.write("\n");
     }
   
   } else {
@@ -1380,8 +1517,7 @@ void loop() {
     }
   }
 
-  buffer_serial();
-  if (!fifo_isempty(&serialFIFO)) serial_poll();
+  process_serial();
 
   #if HAS_DISPLAY
     #if DISPLAY == OLED
@@ -1436,29 +1572,47 @@ void process_serial() {
 
 void sleep_now() {
   #if HAS_SLEEP == true
-    #if BOARD_MODEL == BOARD_T3S3
-      display_intensity = 0;
-      update_display(true);
-    #endif
-    #if PIN_DISP_SLEEP >= 0
-      pinMode(PIN_DISP_SLEEP, OUTPUT);
-      digitalWrite(PIN_DISP_SLEEP, DISP_SLEEP_LEVEL);
-    #endif
-    #if HAS_BLUETOOTH
-      if (bt_state == BT_STATE_CONNECTED) {
-        bt_stop();
+    #if PLATFORM == PLATFORM_ESP32
+      #if BOARD_MODEL == BOARD_T3S3
+        display_intensity = 0;
+        update_display(true);
+      #endif
+      #if PIN_DISP_SLEEP >= 0
+        pinMode(PIN_DISP_SLEEP, OUTPUT);
+        digitalWrite(PIN_DISP_SLEEP, DISP_SLEEP_LEVEL);
+      #endif
+      #if HAS_BLUETOOTH
+        if (bt_state == BT_STATE_CONNECTED) {
+          bt_stop();
+          delay(100);
+        }
+      #endif
+      esp_sleep_enable_ext0_wakeup(PIN_WAKEUP, WAKEUP_LEVEL);
+      esp_deep_sleep_start();
+    #elif PLATFORM == PLATFORM_NRF52
+      #if BOARD_MODEL == BOARD_HELTEC_T114
+        npset(0,0,0);
+        digitalWrite(PIN_VEXT_EN, LOW);
+        digitalWrite(PIN_T114_TFT_BLGT, HIGH);
+        digitalWrite(PIN_T114_TFT_EN, HIGH);
+      #elif BOARD_MODEL == BOARD_TECHO
+        for (uint8_t i = display_intensity; i > 0; i--) { analogWrite(pin_backlight, i-1); delay(1); }
+        epd_black(true); delay(300); epd_black(true); delay(300); epd_black(false);
+        delay(2000);
+        analogWrite(PIN_VEXT_EN, 0);
         delay(100);
-      }
+      #endif
+      sd_power_gpregret_set(0, 0x6d);
+      nrf_gpio_cfg_sense_input(pin_btn_usr1, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+      NRF_POWER->SYSTEMOFF = 1;
     #endif
-    esp_sleep_enable_ext0_wakeup(PIN_WAKEUP, WAKEUP_LEVEL);
-    esp_deep_sleep_start();
   #endif
 }
 
 void button_event(uint8_t event, unsigned long duration) {
-    //if (display_blanked) {
-    //  display_unblank();
-    //} else {
+    if (display_blanked) {
+      display_unblank();
+    } else {
       if (duration > 10000) {
         #if HAS_CONSOLE
           #if HAS_BLUETOOTH || HAS_BLE
@@ -1488,7 +1642,7 @@ void button_event(uint8_t event, unsigned long duration) {
         }
         #endif
       }
-    //}
+    }
 }
 
 void poll_buffers() {
@@ -1501,7 +1655,7 @@ void serial_poll() {
 
   while (!fifo_isempty(&serialFIFO)) {
     char sbyte = fifo_pop(&serialFIFO);
-    serialCallback(sbyte);
+    serial_callback(sbyte);
   }
 
   serial_polling = false;

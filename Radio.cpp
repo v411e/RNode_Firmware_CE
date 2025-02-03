@@ -102,7 +102,7 @@ void ISR_VECT onDio0Rise() {
             if (interface_obj[i]->getPacketValidity()) {
                 interface_obj[i]->handleDio0Rise();
             }
-            if ((interfaces[i] == SX128X) || (interfaces[i] == SX1280)) {
+            if (interfaces[i] == SX1280) {
                 // On the SX1280, there is a bug which can cause the busy line
                 // to remain high if a high amount of packets are received when
                 // in continuous RX mode. This is documented as Errata 16.1 in
@@ -120,8 +120,8 @@ sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, 
   RadioInterface(index),
     _spiSettings(8E6, MSBFIRST, SPI_MODE0), _spiModem(spi), _ss(ss),
     _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
-    _busy(busy), _rxen(rxen), _frequency(0), _sf(0x07), _bw(0x04),
-    _cr(0x01), _ldro(0x00), _packetIndex(0), _implicitHeaderMode(0),
+    _busy(busy), _rxen(rxen), _frequency(0), _bw(0x04),
+    _cr(0x01), _packetIndex(0), _implicitHeaderMode(0),
     _payloadLength(255), _crcMode(1), _fifo_tx_addr_ptr(0),
     _fifo_rx_addr_ptr(0), _preinit_done(false), _tcxo(tcxo),
     _dio2_as_rf_switch(dio2_as_rf_switch)
@@ -217,12 +217,11 @@ void sx126x::loraMode() {
 
 void sx126x::waitOnBusy() {
     unsigned long time = millis();
-    while (digitalRead(_busy) == HIGH)
-    {
-        if (millis() >= (time + 100)) {
-            break;
+    if (_busy != -1) {
+        while (digitalRead(_busy) == HIGH)
+        {
+            if (millis() >= (time + 100)) { break; }
         }
-        // do nothing
     }
 }
 
@@ -275,11 +274,7 @@ void sx126x::writeBuffer(const uint8_t* buffer, size_t size)
     _spiModem->transfer(OP_FIFO_WRITE_6X);
     _spiModem->transfer(_fifo_tx_addr_ptr);
 
-    for (int i = 0; i < size; i++)
-    {
-        _spiModem->transfer(buffer[i]);
-        _fifo_tx_addr_ptr++;
-    }
+    for (int i = 0; i < size; i++) {_spiModem->transfer(buffer[i]); _fifo_tx_addr_ptr++;}
 
     _spiModem->endTransaction();
 
@@ -297,10 +292,7 @@ void sx126x::readBuffer(uint8_t* buffer, size_t size)
     _spiModem->transfer(_fifo_rx_addr_ptr);
     _spiModem->transfer(0x00);
 
-    for (int i = 0; i < size; i++)
-    {
-        buffer[i] = _spiModem->transfer(0x00);
-    }
+    for (int i = 0; i < size; i++) {buffer[i] = _spiModem->transfer(0x00);}
 
     _spiModem->endTransaction();
 
@@ -308,7 +300,7 @@ void sx126x::readBuffer(uint8_t* buffer, size_t size)
 }
 
 void sx126x::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, int ldro) {
-  // because there is no access to these registers on the sx1262, we have
+  // Because there is no access to these registers on the sx1262, we have
   // to set all these parameters at once or not at all.
   uint8_t buf[8];
 
@@ -327,7 +319,7 @@ void sx126x::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr, int ldro) {
 }
 
 void sx126x::setPacketParams(uint32_t preamble, uint8_t headermode, uint8_t length, uint8_t crc) {
-  // because there is no access to these registers on the sx1262, we have
+  // Because there is no access to these registers on the sx1262, we have
   // to set all these parameters at once or not at all.
   uint8_t buf[9];
 
@@ -374,27 +366,11 @@ void sx126x::calibrate(void) {
 void sx126x::calibrate_image(uint32_t frequency) {
   uint8_t image_freq[2] = {0};
 
-  if (frequency >= 430E6 && frequency <= 440E6) {
-    image_freq[0] = 0x6B;
-    image_freq[1] = 0x6F;
-  }
-  else if (frequency >= 470E6 && frequency <= 510E6) {
-    image_freq[0] = 0x75;
-    image_freq[1] = 0x81;
-  }
-  else if (frequency >= 779E6 && frequency <= 787E6) {
-    image_freq[0] = 0xC1;
-    image_freq[1] = 0xC5;
-  }
-  else if (frequency >= 863E6 && frequency <= 870E6) {
-    image_freq[0] = 0xD7;
-    image_freq[1] = 0xDB;
-  }
-  else if (frequency >= 902E6 && frequency <= 928E6) {
-    image_freq[0] = 0xE1;
-    image_freq[1] = 0xE9;
-  }
-
+  if (frequency >= 430E6 && frequency <= 440E6) { image_freq[0] = 0x6B; image_freq[1] = 0x6F; }
+  else if (frequency >= 470E6 && frequency <= 510E6) { image_freq[0] = 0x75; image_freq[1] = 0x81; }
+  else if (frequency >= 779E6 && frequency <= 787E6) { image_freq[0] = 0xC1; image_freq[1] = 0xC5; }
+  else if (frequency >= 863E6 && frequency <= 870E6) { image_freq[0] = 0xD7; image_freq[1] = 0xDB; }
+  else if (frequency >= 902E6 && frequency <= 928E6) { image_freq[0] = 0xE1; image_freq[1] = 0xE9; }
   executeOpcode(OP_CALIBRATE_IMAGE_6X, image_freq, 2);
   waitOnBusy();
 }
@@ -403,9 +379,7 @@ int sx126x::begin()
 {
   reset();
 
-  if (_busy != -1) {
-      pinMode(_busy, INPUT);
-  }
+  if (_busy != -1) { pinMode(_busy, INPUT); }
 
   if (!_preinit_done) {
     if (!preInit()) {
@@ -413,9 +387,7 @@ int sx126x::begin()
     }
   }
 
-  if (_rxen != -1) {
-      pinMode(_rxen, OUTPUT);
-  }
+  if (_rxen != -1) { pinMode(_rxen, OUTPUT); }
 
   calibrate();
   calibrate_image(_frequency);
@@ -502,13 +474,17 @@ int sx126x::endPacket()
 
     executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
 
-    // wait for TX done
-    while ((buf[1] & IRQ_TX_DONE_MASK_6X) == 0) {
+    // Wait for TX done
+    bool timed_out = false;
+    uint32_t w_timeout = millis()+(getAirtime(_payloadLength)* MODEM_TIMEOUT_MULT);
+    while ((millis() < w_timeout) && ((buf[1] & IRQ_TX_DONE_MASK_6X) == 0)) {
         buf[0] = 0x00;
         buf[1] = 0x00;
         executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
         yield();
     }
+
+    if (millis() > w_timeout) { timed_out = true; }
 
     // clear IRQ's
 
@@ -516,32 +492,38 @@ int sx126x::endPacket()
     mask[0] = 0x00;
     mask[1] = IRQ_TX_DONE_MASK_6X;
     executeOpcode(OP_CLEAR_IRQ_STATUS_6X, mask, 2);
-    return 1;
+    return !timed_out;
 }
 
-uint8_t sx126x::modemStatus() {
-    // imitate the register status from the sx1276 / 78
-    uint8_t buf[2] = {0};
 
-    executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
-    uint8_t clearbuf[2] = {0};
-    uint8_t byte = 0x00;
+bool sx126x::dcd() {
+  bool false_preamble_detected = false;
+  uint8_t buf[2] = {0}; executeOpcodeRead(OP_GET_IRQ_STATUS_6X, buf, 2);
+  uint32_t now = millis();
 
-    if ((buf[1] & IRQ_PREAMBLE_DET_MASK_6X) != 0) {
-      byte = byte | 0x01 | 0x04;
-      // clear register after reading
+  bool header_detected = false;
+  bool carrier_detected = false;
+
+  if ((buf[1] & IRQ_HEADER_DET_MASK_6X) != 0) { header_detected = true; carrier_detected = true; }
+  else { header_detected = false; }
+
+  if ((buf[1] & IRQ_PREAMBLE_DET_MASK_6X) != 0) {
+    carrier_detected = true;
+    if (_preamble_detected_at == 0) { _preamble_detected_at = now; }
+    if (now - _preamble_detected_at > _lora_preamble_time_ms + _lora_header_time_ms) {
+      _preamble_detected_at = 0;
+      if (!header_detected) { false_preamble_detected = true; }
+      uint8_t clearbuf[2] = {0};
       clearbuf[1] = IRQ_PREAMBLE_DET_MASK_6X;
+      executeOpcode(OP_CLEAR_IRQ_STATUS_6X, clearbuf, 2);
     }
+  }
 
-    if ((buf[1] & IRQ_HEADER_DET_MASK_6X) != 0) {
-      byte = byte | 0x02 | 0x04;
-    }
-
-    executeOpcode(OP_CLEAR_IRQ_STATUS_6X, clearbuf, 2);
-
-    return byte; 
+  // TODO: Maybe there's a way of unlatching the RSSI
+  // status without re-activating receive mode?
+  if (false_preamble_detected) { receive(); false_preamble_detected = false; }
+  return carrier_detected;
 }
-
 
 uint8_t sx126x::currentRssiRaw() {
     uint8_t byte = 0;
@@ -615,9 +597,7 @@ int ISR_VECT sx126x::available()
 
 int ISR_VECT sx126x::read()
 {
-  if (!available()) {
-    return -1;
-  }
+  if (!available()) { return -1; }
 
   // if received new packet
   if (_packetIndex == 0) {
@@ -753,6 +733,8 @@ void sx126x::enableTCXO() {
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_TBEAM_S_V1
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
+    #elif BOARD_MODEL == BOARD_HELTEC_T114
+      uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #else
       uint8_t buf[4] = {0};
     #endif
@@ -784,7 +766,7 @@ void sx126x::setTxPower(int level, int outputPin) {
 
     _txp = level;
 
-    writeRegister(REG_OCP_6X, 0x38); // 160mA limit, overcurrent protection
+    writeRegister(REG_OCP_6X, OCP_TUNED); // 160mA limit, overcurrent protection
 
     uint8_t tx_buf[2];
 
@@ -927,7 +909,7 @@ void sx126x::setPreambleLength(long length)
 
 void sx126x::setSyncWord(uint16_t sw)
 {
-  // TODO: Fix
+    // TODO: Why was this hardcoded instead of using the config value?
     // writeRegister(REG_SYNC_WORD_MSB_6X, (sw & 0xFF00) >> 8);
     // writeRegister(REG_SYNC_WORD_LSB_6X, sw & 0x00FF);
     writeRegister(REG_SYNC_WORD_MSB_6X, 0x14);
@@ -946,7 +928,7 @@ void sx126x::disableCrc()
     setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
 }
 
-byte sx126x::random()
+uint8_t sx126x::random()
 {
     return readRegister(REG_RANDOM_GEN_6X);
 }
@@ -991,28 +973,6 @@ void sx126x::handleDio0Rise()
 
     if (_onReceive) {
         _onReceive(_index, packetLength);
-    }
-}
-
-void sx126x::updateBitrate() {
-    if (_radio_online) {
-        _lora_symbol_rate = (float)getSignalBandwidth()/(float)(pow(2, _sf));
-        _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
-        _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
-        _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        _csma_slot_ms = _lora_symbol_time_ms*12;
-        if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
-        if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
-        float target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
-            target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
-        } else {
-            target_preamble_symbols = ceil(target_preamble_symbols);
-        }
-        _preambleLength = (long)target_preamble_symbols;
-        setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
-    } else {
-        _bitrate = 0;
     }
 }
 
@@ -1095,19 +1055,13 @@ sx127x::sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int mis
     _spiModem(spi),
   _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso),  _reset(reset), _dio0(dio0),
   _busy(busy), _frequency(0), _packetIndex(0), _preinit_done(false), _bw(0)
-{ 
-    setTimeout(0); 
-    // TODO, figure out why this has to be done. Using the index to reference the
-    // interface_obj list causes a crash otherwise
-    //_index = getIndex();
-}
+{ setTimeout(0); }
 
 void sx127x::setSPIFrequency(uint32_t frequency) { _spiSettings = SPISettings(frequency, MSBFIRST, SPI_MODE0); }
 uint8_t ISR_VECT sx127x::readRegister(uint8_t address) { return singleTransfer(address & 0x7f, 0x00); }
 void sx127x::writeRegister(uint8_t address, uint8_t value) { singleTransfer(address | 0x80, value); }
 void sx127x::standby() { writeRegister(REG_OP_MODE_7X, MODE_LONG_RANGE_MODE_7X | MODE_STDBY_7X); }
 void sx127x::sleep() { writeRegister(REG_OP_MODE_7X, MODE_LONG_RANGE_MODE_7X | MODE_SLEEP_7X); }
-uint8_t sx127x::modemStatus() { return readRegister(REG_MODEM_STAT_7X); }
 void sx127x::setSyncWord(uint8_t sw) { writeRegister(REG_SYNC_WORD_7X, sw); }
 void sx127x::enableCrc() { writeRegister(REG_MODEM_CONFIG_2_7X, readRegister(REG_MODEM_CONFIG_2_7X) | 0x04); }
 void sx127x::disableCrc() { writeRegister(REG_MODEM_CONFIG_2_7X, readRegister(REG_MODEM_CONFIG_2_7X) & 0xfb); }
@@ -1115,7 +1069,7 @@ void sx127x::enableTCXO() { uint8_t tcxo_reg = readRegister(REG_TCXO_7X); writeR
 void sx127x::disableTCXO() { uint8_t tcxo_reg = readRegister(REG_TCXO_7X); writeRegister(REG_TCXO_7X, tcxo_reg & 0xEF); }
 void sx127x::explicitHeaderMode() { _implicitHeaderMode = 0; writeRegister(REG_MODEM_CONFIG_1_7X, readRegister(REG_MODEM_CONFIG_1_7X) & 0xfe); }
 void sx127x::implicitHeaderMode() { _implicitHeaderMode = 1; writeRegister(REG_MODEM_CONFIG_1_7X, readRegister(REG_MODEM_CONFIG_1_7X) | 0x01); }
-byte sx127x::random() { return readRegister(REG_RSSI_WIDEBAND_7X); }
+uint8_t sx127x::random() { return readRegister(REG_RSSI_WIDEBAND_7X); }
 void sx127x::flush() { }
 
 bool sx127x::preInit() {
@@ -1185,11 +1139,11 @@ int sx127x::begin() {
   setCodingRate4(_cr);
   setTxPower(_txp);
 
-  // set base addresses
+  // Set base addresses
   writeRegister(REG_FIFO_TX_BASE_ADDR_7X, 0);
   writeRegister(REG_FIFO_RX_BASE_ADDR_7X, 0);
 
-  // set LNA boost and auto AGC
+  // Set LNA boost and auto AGC
   writeRegister(REG_LNA_7X, readRegister(REG_LNA_7X) | 0x03);
   writeRegister(REG_MODEM_CONFIG_3_7X, 0x04);
 
@@ -1239,6 +1193,15 @@ int sx127x::endPacket() {
   return 1;
 }
 
+
+bool sx127x::dcd() {
+  bool carrier_detected = false;
+  uint8_t status = readRegister(REG_MODEM_STAT_7X);
+  if ((status & SIG_DETECT) == SIG_DETECT) { carrier_detected = true; }
+  if ((status & SIG_SYNCED) == SIG_SYNCED) { carrier_detected = true; }
+  return carrier_detected;
+}
+
 uint8_t sx127x::currentRssiRaw() {
     uint8_t rssi = readRegister(REG_RSSI_VALUE_7X);
     return rssi;
@@ -1256,17 +1219,30 @@ uint8_t sx127x::packetRssiRaw() {
 }
 
 int ISR_VECT sx127x::packetRssi(uint8_t pkt_snr_raw) {
+    int pkt_rssi = (int)readRegister(REG_PKT_RSSI_VALUE_7X) - RSSI_OFFSET;
+    int pkt_snr = ((int8_t)pkt_snr_raw)*0.25;
+
+    if (_frequency < 820E6) pkt_rssi -= 7;
+
+    if (pkt_snr < 0) {
+        pkt_rssi += pkt_snr;
+    } else {
+        // Slope correction is (16/15)*pkt_rssi,
+        // this estimation looses one floating point
+        // operation, and should be precise enough.
+        pkt_rssi = (int)(1.066 * pkt_rssi);
+    }
+    return pkt_rssi;
+}
+
+int ISR_VECT sx127x::packetRssi() {
   int pkt_rssi = (int)readRegister(REG_PKT_RSSI_VALUE_7X) - RSSI_OFFSET;
-  int pkt_snr;
-  if (pkt_snr_raw == 0xFF) {
-      pkt_snr = packetSnr();
-  } else {
-      pkt_snr = ((int8_t)pkt_snr_raw)*0.25;
-  }
+  int pkt_snr = packetSnr();
+
   if (_frequency < 820E6) pkt_rssi -= 7;
-  if (pkt_snr < 0) {
-      pkt_rssi += pkt_snr;
-  } else {
+
+  if (pkt_snr < 0) { pkt_rssi += pkt_snr; }
+  else {
       // Slope correction is (16/15)*pkt_rssi,
       // this estimation looses one floating point
       // operation, and should be precise enough.
@@ -1276,13 +1252,9 @@ int ISR_VECT sx127x::packetRssi(uint8_t pkt_snr_raw) {
 }
 
 
-uint8_t ISR_VECT sx127x::packetSnrRaw() {
-    return readRegister(REG_PKT_SNR_VALUE_7X);
-}
+uint8_t ISR_VECT sx127x::packetSnrRaw() { return readRegister(REG_PKT_SNR_VALUE_7X); }
 
-float ISR_VECT sx127x::packetSnr() {
-    return ((int8_t)readRegister(REG_PKT_SNR_VALUE_7X)) * 0.25;
-}
+float ISR_VECT sx127x::packetSnr() { return ((int8_t)readRegister(REG_PKT_SNR_VALUE_7X)) * 0.25; }
 
 long sx127x::packetFrequencyError() {
   int32_t freqError = 0;
@@ -1306,13 +1278,9 @@ size_t sx127x::write(uint8_t byte) { return write(&byte, sizeof(byte)); }
 
 size_t sx127x::write(const uint8_t *buffer, size_t size) {
     int currentLength = readRegister(REG_PAYLOAD_LENGTH_7X);
-    if ((currentLength + size) > MAX_PKT_LENGTH) {
-        size = MAX_PKT_LENGTH - currentLength;
-    }
+    if ((currentLength + size) > MAX_PKT_LENGTH) { size = MAX_PKT_LENGTH - currentLength; }
 
-    for (size_t i = 0; i < size; i++) {
-        writeRegister(REG_FIFO_7X, buffer[i]);
-    }
+    for (size_t i = 0; i < size; i++) { writeRegister(REG_FIFO_7X, buffer[i]); }
 
     writeRegister(REG_PAYLOAD_LENGTH_7X, currentLength + size);
     return size;
@@ -1490,9 +1458,11 @@ void sx127x::handleLowDataRate() {
   if ( long( (1<<sf) / (getSignalBandwidth()/1000)) > 16) {
     // Set auto AGC and LowDataRateOptimize
     writeRegister(REG_MODEM_CONFIG_3_7X, (1<<3)|(1<<2));
+    _ldro = true;
   } else {
     // Only set auto AGC
     writeRegister(REG_MODEM_CONFIG_3_7X, (1<<2));
+    _ldro = false;
   }
 }
 
@@ -1512,33 +1482,16 @@ void sx127x::optimizeModemSensitivity() {
 }
 
 void sx127x::handleDio0Rise() {
-    _packetIndex = 0;
-    int packetLength = _implicitHeaderMode ? readRegister(REG_PAYLOAD_LENGTH_7X) : readRegister(REG_RX_NB_BYTES_7X);
-    writeRegister(REG_FIFO_ADDR_PTR_7X, readRegister(REG_FIFO_RX_CURRENT_ADDR_7X));
-    if (_onReceive) { 
-        _onReceive(_index, packetLength); 
-    }
-    writeRegister(REG_FIFO_ADDR_PTR_7X, 0);
-}
+    int irqFlags = readRegister(REG_IRQ_FLAGS_7X);
 
-void sx127x::updateBitrate() {
-    if (_radio_online) {
-        _lora_symbol_rate = (float)getSignalBandwidth()/(float)(pow(2, _sf));
-        _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
-        _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
-        _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        _csma_slot_ms = _lora_symbol_time_ms*12;
-        if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
-        if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
-        float target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
-            target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
-        } else {
-            target_preamble_symbols = ceil(target_preamble_symbols);
-        }
-        _preambleLength = (long)target_preamble_symbols;
-    } else {
-        _bitrate = 0;
+    // Clear IRQs
+    writeRegister(REG_IRQ_FLAGS_7X, irqFlags);
+    if ((irqFlags & IRQ_PAYLOAD_CRC_ERROR_MASK_7X) == 0) {
+        _packetIndex = 0;
+        int packetLength = _implicitHeaderMode ? readRegister(REG_PAYLOAD_LENGTH_7X) : readRegister(REG_RX_NB_BYTES_7X);
+        writeRegister(REG_FIFO_ADDR_PTR_7X, readRegister(REG_FIFO_RX_CURRENT_ADDR_7X));
+        if (_onReceive) { _onReceive(_index, packetLength); }
+        writeRegister(REG_FIFO_ADDR_PTR_7X, 0);
     }
 }
 
@@ -1603,11 +1556,11 @@ sx128x::sx128x(uint8_t index, SPIClass* spi, bool tcxo, int ss, int sclk, int mo
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
   _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso), _reset(reset), _dio0(dio0),
-  _busy(busy), _rxen(rxen), _txen(txen), _frequency(0), _sf(0x05),
+  _busy(busy), _rxen(rxen), _txen(txen), _frequency(0),
   _bw(0x34), _cr(0x01), _packetIndex(0), _implicitHeaderMode(0),
   _payloadLength(255), _crcMode(0), _fifo_tx_addr_ptr(0), _fifo_rx_addr_ptr(0),
   _rxPacketLength(0), _preinit_done(false),
-  _tcxo(tcxo)
+  _tcxo(tcxo), _preamble_e(1), _preamble_m(1), _last_preamble(0)
 {
   // overide Stream timeout value
   setTimeout(0);
@@ -1633,25 +1586,21 @@ bool sx128x::preInit() {
     _spiModem->begin();
   #endif
 
-  // check version (retry for up to 2 seconds)
+  // check version (retry for up to 500 ms)
   long start = millis();
 
   uint8_t version_msb;
   uint8_t version_lsb;
 
-  while (((millis() - start) < 2000) && (millis() >= start)) {
+  while (((millis() - start) < 500) && (millis() >= start)) {
 
       version_msb = readRegister(REG_FIRM_VER_MSB);
       version_lsb = readRegister(REG_FIRM_VER_LSB);
 
-      if ((version_msb == 0xB7 && version_lsb == 0xA9) || (version_msb == 0xB5 && version_lsb == 0xA9)) {
-          break;
-      }
+      if ((version_msb == 0xB7 && version_lsb == 0xA9) || (version_msb == 0xB5 && version_lsb == 0xA9)) { break; }
       delay(100);
   }
-  if ((version_msb != 0xB7 || version_lsb != 0xA9) && (version_msb != 0xB5 || version_lsb != 0xA9)) {
-      return false;
-  }
+  if ((version_msb != 0xB7 || version_lsb != 0xA9) && (version_msb != 0xB5 || version_lsb != 0xA9)) { return false; }
 
   _preinit_done = true;
   return true;
@@ -1679,9 +1628,7 @@ uint8_t ISR_VECT sx128x::singleTransfer(uint8_t opcode, uint16_t address, uint8_
     _spiModem->transfer(opcode);
     _spiModem->transfer((address & 0xFF00) >> 8);
     _spiModem->transfer(address & 0x00FF);
-    if (opcode == OP_READ_REGISTER_8X) {
-        _spiModem->transfer(0x00);
-    }
+    if (opcode == OP_READ_REGISTER_8X) { _spiModem->transfer(0x00); }
     response = _spiModem->transfer(value);
     _spiModem->endTransaction();
 
@@ -1692,26 +1639,17 @@ uint8_t ISR_VECT sx128x::singleTransfer(uint8_t opcode, uint16_t address, uint8_
 
 void sx128x::rxAntEnable()
 {
-    if (_txen != -1) {
-        digitalWrite(_txen, LOW);
-    }
-    if (_rxen != -1) {
-        digitalWrite(_rxen, HIGH);
-    }
+    if (_txen != -1) { digitalWrite(_txen, LOW); }
+    if (_rxen != -1) { digitalWrite(_rxen, HIGH); }
 }
 
 void sx128x::txAntEnable()
 {
-    if (_txen != -1) {
-        digitalWrite(_txen, HIGH);
-    }
-    if (_rxen != -1) {
-        digitalWrite(_rxen, LOW);
-    }
+    if (_txen != -1) { digitalWrite(_txen, HIGH); }
+    if (_rxen != -1) { digitalWrite(_rxen, LOW); }
 }
 
 void sx128x::loraMode() {
-    // enable lora mode on the SX1262 chip
     uint8_t mode = MODE_LONG_RANGE_MODE_8X;
     executeOpcode(OP_PACKET_TYPE_8X, &mode, 1);
 }
@@ -1720,10 +1658,7 @@ void sx128x::waitOnBusy() {
     unsigned long time = millis();
     while (digitalRead(_busy) == HIGH)
     {
-        if (millis() >= (time + 100)) {
-            break;
-        }
-        // do nothing
+        if (millis() >= (time + 100)) { break; }
     }
 }
 
@@ -1818,37 +1753,38 @@ void sx128x::setModulationParams(uint8_t sf, uint8_t bw, uint8_t cr) {
   buf[2] = cr; 
   executeOpcode(OP_MODULATION_PARAMS_8X, buf, 3);
 
-  if (sf <= 6) {
-      writeRegister(0x925, 0x1E);
-  } else if (sf <= 8) {
-      writeRegister(0x925, 0x37);
-  } else if (sf >= 9) {
-      writeRegister(0x925, 0x32);
-  }
+  if (sf <= 6) { writeRegister(0x925, 0x1E); } 
+  else if (sf <= 8) { writeRegister(0x925, 0x37); } 
+  else if (sf >= 9) { writeRegister(0x925, 0x32); }
   writeRegister(0x093C, 0x1);
 }
 
-void sx128x::setPacketParams(uint32_t preamble, uint8_t headermode, uint8_t length, uint8_t crc) {
+void sx128x::setPacketParams(uint32_t target_preamble, uint8_t headermode, uint8_t length, uint8_t crc) {
   // because there is no access to these registers on the sx1280, we have
   // to set all these parameters at once or not at all.
   uint8_t buf[7];
-  // calculate exponent and mantissa values for modem
-  uint8_t e = 1;
-  uint8_t m = 1;
-  uint32_t preamblelen;
+  uint32_t calc_preamble;
 
-  while (e <= 15) {
-      while (m <= 15) {
-          preamblelen = m * (pow(2,e));
-          if (preamblelen >= preamble) break;
-          m++;
+  // Cap max preamble length
+  if (target_preamble >= 0xF000) target_preamble = 0xF000;
+
+  if (_last_preamble != target_preamble) {
+      _preamble_e = 1;
+      _preamble_m = 1;
+      // calculate exponent and mantissa values for modem
+      while (_preamble_e <= 15) {
+          while (_preamble_m <= 15) {
+              calc_preamble = _preamble_m * (pow(2,_preamble_e));
+              if (calc_preamble >= target_preamble - 4) break;
+              _preamble_m++;
+          }
+          if (calc_preamble >= target_preamble - 4) break;
+          _preamble_m = 1;
+          _preamble_e++;
       }
-      if (preamblelen >= preamble) break;
-      m = 0;
-      e++;
   }
 
-  buf[0] = (e << 4) | m;
+  buf[0] = (_preamble_e << 4) | _preamble_m;
   buf[1] = headermode;
   buf[2] = length;
   buf[3] = crc;
@@ -1859,6 +1795,8 @@ void sx128x::setPacketParams(uint32_t preamble, uint8_t headermode, uint8_t leng
   buf[6] = 0x00; 
 
   executeOpcode(OP_PACKET_PARAMS_8X, buf, 7);
+
+  _last_preamble = target_preamble;
 }
 
 int sx128x::begin()
@@ -1933,11 +1871,8 @@ int sx128x::beginPacket(int implicitHeader)
   // put in standby mode
   standby();
 
-  if (implicitHeader) {
-    implicitHeaderMode();
-  } else {
-    explicitHeaderMode();
-  }
+  if (implicitHeader) { implicitHeaderMode(); } 
+  else { explicitHeaderMode(); }
 
   _payloadLength = 0;
   _fifo_tx_addr_ptr = 0;
@@ -1963,14 +1898,17 @@ int sx128x::endPacket()
 
   executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
 
-  // wait for TX done
-  while ((buf[1] & IRQ_TX_DONE_MASK_8X) == 0) {
+  // Wait for TX done
+  bool timed_out = false;
+  uint32_t w_timeout = millis()+(getAirtime(_payloadLength)* MODEM_TIMEOUT_MULT);
+  while ((millis() < w_timeout) && ((buf[1] & IRQ_TX_DONE_MASK_8X) == 0)) {
     buf[0] = 0x00;
     buf[1] = 0x00;
     executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
     yield();
   }
 
+  if (millis() > w_timeout) { timed_out = true; }
 
   // clear IRQ's
 
@@ -1978,34 +1916,36 @@ int sx128x::endPacket()
   mask[0] = 0x00;
   mask[1] = IRQ_TX_DONE_MASK_8X;
   executeOpcode(OP_CLEAR_IRQ_STATUS_8X, mask, 2);
-  return 1;
+  return !timed_out;
 }
 
-uint8_t sx128x::modemStatus() {
-    // imitate the register status from the sx1276 / 78
-    uint8_t buf[2] = {0};
+bool sx128x::dcd() {
+    bool false_preamble_detected = false;
+    uint8_t buf[2] = {0}; executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
+    uint32_t now = millis();
 
-    executeOpcodeRead(OP_GET_IRQ_STATUS_8X, buf, 2);
+    bool header_detected = false;
+    bool carrier_detected = false;
 
-    uint8_t clearbuf[2] = {0};
-
-    uint8_t byte = 0x00;
+    if ((buf[1] & IRQ_HEADER_DET_MASK_8X) != 0) { header_detected = true; carrier_detected = true; }
+    else { header_detected = false; }
 
     if ((buf[0] & IRQ_PREAMBLE_DET_MASK_8X) != 0) {
-        byte = byte | 0x01 | 0x04;
-        // clear register after reading
-        clearbuf[0] = IRQ_PREAMBLE_DET_MASK_8X;
+        carrier_detected = true;
+        if (_preamble_detected_at == 0) { _preamble_detected_at = now; }
+        if (now - _preamble_detected_at > _lora_preamble_time_ms + _lora_header_time_ms) {
+            _preamble_detected_at = 0;
+            if (!header_detected) { false_preamble_detected = true; }
+            uint8_t clearbuf[2]  = {0}; clearbuf[0] = IRQ_PREAMBLE_DET_MASK_8X;
+            executeOpcode(OP_CLEAR_IRQ_STATUS_8X, clearbuf, 2);
+        }
     }
 
-    if ((buf[1] & IRQ_HEADER_DET_MASK_8X) != 0) {
-        byte = byte | 0x02 | 0x04;
-    }
-
-    executeOpcode(OP_CLEAR_IRQ_STATUS_8X, clearbuf, 2);
-
-    return byte;
+    // TODO: Maybe there's a way of unlatching the RSSI
+    // status without re-activating receive mode?
+    if (false_preamble_detected) { receive(); }
+    return carrier_detected;
 }
-
 
 uint8_t sx128x::currentRssiRaw() {
     uint8_t byte = 0;
@@ -2096,9 +2036,7 @@ int ISR_VECT sx128x::read()
         }
         _fifo_rx_addr_ptr = rxbuf[1];
 
-        if (size > 255) {
-            size = 255;
-        }
+        if (size > 255) { size = 255; }
 
         readBuffer(_packet, size);
     }
@@ -2110,9 +2048,7 @@ int ISR_VECT sx128x::read()
 
 int sx128x::peek()
 {
-  if (!available()) {
-    return -1;
-  }
+  if (!available()) { return -1; }
 
   uint8_t b = _packet[_packetIndex];
   return b;
@@ -2227,11 +2163,8 @@ void sx128x::setTxPower(int level, int outputPin) {
     uint8_t tx_buf[2];
     #if BOARD_VARIANT == MODEL_13 || BOARD_VARIANT == MODEL_21
     // RAK4631 with WisBlock SX1280 module (LIBSYS002)
-    if (level > 27) {
-        level = 27;
-    } else if (level < 0) {
-        level = 0;
-    }
+    if (level > 27) { level = 27; } 
+    else if (level < 0) { level = 0; }
 
     _txp = level;
 
@@ -2334,18 +2267,15 @@ void sx128x::setTxPower(int level, int outputPin) {
 
     #elif BOARD_VARIANT == MODEL_AC
     // T3S3 SX1280 PA
-        if (level > 20) {
-            level = 20;
-        } else if (level < 0) {
-            level = 0;
-        }
+        if (level > 20) { level = 20; } 
+        else if (level < 0) { level = 0; }
 
         _txp = level;
 
         int reg_value;
 
         switch (level) {
-            /*case 0:
+            case 0:
                 reg_value = -18;
                 break;
             case 1:
@@ -2404,7 +2334,7 @@ void sx128x::setTxPower(int level, int outputPin) {
                 break;
             case 19:
                 reg_value = 2;
-                break;*/
+                break;
             case 20:
                 reg_value = 3;
                 break;
@@ -2489,7 +2419,8 @@ uint32_t sx128x::getSignalBandwidth()
 }
 
 void sx128x::handleLowDataRate(){
-    // todo: do i need this??
+  if (_sf > 10) { _ldro = true; }
+  else          { _ldro = false; }
 }
 
 void sx128x::optimizeModemSensitivity(){
@@ -2498,15 +2429,10 @@ void sx128x::optimizeModemSensitivity(){
 
 void sx128x::setSignalBandwidth(uint32_t sbw)
 {
-      if (sbw <= 203.125E3) {
-          _bw = 0x34;
-      } else if (sbw <= 406.25E3) {
-          _bw = 0x26;
-      } else if (sbw <= 812.5E3) {
-          _bw = 0x18;
-      } else {
-          _bw = 0x0A;
-      }
+      if (sbw <= 203.125E3) { _bw = 0x34; } 
+      else if (sbw <= 406.25E3) { _bw = 0x26; } 
+      else if (sbw <= 812.5E3) { _bw = 0x18; } 
+      else { _bw = 0x0A; }
 
       setModulationParams(_sf, _bw, _cr);
 
@@ -2514,8 +2440,8 @@ void sx128x::setSignalBandwidth(uint32_t sbw)
   optimizeModemSensitivity();
 }
 
-void sx128x::setCodingRate4(int denominator)
-{
+void sx128x::setCodingRate4(int denominator) {
+  // TODO: add support for new interleaving scheme, see page 117 of sx1280 datasheet
   if (denominator < 5) {
     denominator = 5;
   } else if (denominator > 8) {
@@ -2615,34 +2541,6 @@ void sx128x::handleDio0Rise()
 
     if (_onReceive) {
         _onReceive(_index, _rxPacketLength);
-    }
-}
-
-void sx128x::updateBitrate() {
-    if (_radio_online) {
-        _lora_symbol_rate = (float)getSignalBandwidth()/(float)(pow(2, _sf));
-        _lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
-        _bitrate = (uint32_t)(_sf * ( (4.0/(float)(_cr+4)) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
-        _lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
-        _csma_slot_ms = _lora_symbol_time_ms*12;
-        if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
-        if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = CSMA_SLOT_MIN_MS; }
-
-        float target_preamble_symbols;
-        if (_bitrate <= LORA_FAST_BITRATE_THRESHOLD) {
-            target_preamble_symbols = (LORA_PREAMBLE_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        } else {
-            target_preamble_symbols = (LORA_PREAMBLE_FAST_TARGET_MS/_lora_symbol_time_ms)-LORA_PREAMBLE_SYMBOLS_HW;
-        }
-        if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) {
-            target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN;
-        } else {
-            target_preamble_symbols = ceil(target_preamble_symbols);
-        }
-        _preambleLength = (long)target_preamble_symbols;
-        setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
-    } else {
-        _bitrate = 0;
     }
 }
 

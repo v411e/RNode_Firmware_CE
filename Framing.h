@@ -44,6 +44,7 @@
   #define CMD_STAT_CHTM   0x25
   #define CMD_STAT_PHYPRM 0x26
   #define CMD_STAT_BAT    0x27
+  #define CMD_STAT_CSMA   0x28
   #define CMD_BLINK       0x30
   #define CMD_RANDOM      0x40
 
@@ -51,12 +52,16 @@
   #define CMD_FB_READ     0x42
   #define CMD_FB_WRITE    0x43
   #define CMD_FB_READL    0x44
+  #define CMD_DISP_READ   0x66
   #define CMD_DISP_INT    0x45
   #define CMD_DISP_ADDR   0x63
   #define CMD_DISP_BLNK   0x64
+  #define CMD_DISP_ROT    0x67
+  #define CMD_DISP_RCND   0x68
   #define CMD_NP_INT      0x65
   #define CMD_BT_CTRL     0x46
   #define CMD_BT_PIN      0x62
+  #define CMD_DIS_IA      0x69
 
   #define CMD_BOARD       0x47
   #define CMD_PLATFORM    0x48

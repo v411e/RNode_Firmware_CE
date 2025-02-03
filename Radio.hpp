@@ -19,6 +19,15 @@
 #define PA_OUTPUT_RFO_PIN 0
 #define PA_OUTPUT_PA_BOOST_PIN 1
 
+// Default LoRa settings
+#define PHY_HEADER_LORA_SYMBOLS    20
+#define PHY_CRC_LORA_BITS          16
+#define LORA_PREAMBLE_SYMBOLS_MIN  18
+#define LORA_PREAMBLE_TARGET_MS    24
+#define LORA_PREAMBLE_FAST_DELTA   18
+#define LORA_FAST_THRESHOLD_BPS    30E3
+#define LORA_LIMIT_THRESHOLD_BPS   60E3
+
 // DCD
 #define STATUS_INTERVAL_MS 3
 #define DCD_SAMPLES 2500
@@ -29,22 +38,31 @@
 #define AIRTIME_BINLEN_MS (STATUS_INTERVAL_MS*DCD_SAMPLES)
 #define AIRTIME_BINS ((AIRTIME_LONGTERM*1000)/AIRTIME_BINLEN_MS)
 #define current_airtime_bin(void) (millis()%AIRTIME_LONGTERM_MS)/AIRTIME_BINLEN_MS
-#define DCD_THRESHOLD 2
-#define DCD_LED_STEP_D 3
-#define LORA_PREAMBLE_SYMBOLS_HW  4
-#define LORA_PREAMBLE_SYMBOLS_MIN 18
-#define LORA_PREAMBLE_TARGET_MS   15
-#define LORA_PREAMBLE_FAST_TARGET_MS 4
-#define LORA_FAST_BITRATE_THRESHOLD 40000
-#define CSMA_SLOT_MAX_MS 100
-#define CSMA_SLOT_MIN_MS 24
+
+
+// CSMA Parameters
+#define CSMA_SIFS_MS               0
+#define CSMA_POST_TX_YIELD_SLOTS   3
+#define CSMA_SLOT_MAX_MS           100
+#define CSMA_SLOT_MIN_MS           24
+#define CSMA_SLOT_MIN_FAST_DELTA   18
+#define CSMA_SLOT_SYMBOLS          12
+#define CSMA_CW_BANDS              4
+#define CSMA_CW_MIN                0
+#define CSMA_CW_PER_BAND_WINDOWS   15
+#define CSMA_BAND_1_MAX_AIRTIME    7
+#define CSMA_BAND_N_MIN_AIRTIME    85
+#define CSMA_INFR_THRESHOLD_DB     12
+
+#define LED_ID_TRIG 16
+
+#define NOISE_FLOOR_SAMPLES 64
 
 #define RSSI_OFFSET 157
 
 #define PHY_HEADER_LORA_SYMBOLS 8
 
-#define _e 2.71828183
-#define _S 12.5
+#define MODEM_TIMEOUT_MULT 1.1
 
 // Status flags
 const uint8_t SIG_DETECT = 0x01;
@@ -53,9 +71,13 @@ const uint8_t RX_ONGOING = 0x04;
 
 // forward declare Utilities.h LED functions
 void led_rx_on();
-
 void led_rx_off();
+void led_id_on();
+void led_id_off();
 void led_indicate_airtime_lock();
+
+void kiss_indicate_channel_stats(uint8_t index);
+void kiss_indicate_csma_stats(uint8_t index);
 
 #if PLATFORM == PLATFORM_ESP32
 // get update_lock for ESP32
@@ -65,18 +87,19 @@ extern portMUX_TYPE update_lock;
 class RadioInterface : public Stream {
 public:
     // todo: in the future define _spiModem and _spiSettings from here for inheritence by child classes
-    RadioInterface(uint8_t index) : _index(index), _radio_locked(false),
+    RadioInterface(uint8_t index) : _index(index), _sf(0x07), _radio_locked(false),
     _radio_online(false), _st_airtime_limit(0.0), _lt_airtime_limit(0.0),
-    _airtime_lock(false), _airtime(0.0), _longterm_airtime(0.0),
+    _airtime_lock(false), _airtime(0.0), _longterm_airtime(0.0), _last_packet_cost(0.0),
     _local_channel_util(0.0), _total_channel_util(0.0),
     _longterm_channel_util(0.0), _last_status_update(0),
      _stat_signal_detected(false), _stat_signal_synced(false),_stat_rx_ongoing(false), _last_dcd(0), 
      _dcd_count(0), _dcd(false), _dcd_led(false),
-    _dcd_waiting(false), _dcd_wait_until(0), _dcd_sample(0),
-    _post_tx_yield_timeout(0), _csma_slot_ms(50), _csma_p(85), _csma_p_min(0.15),
-    _csma_p_max(0.333), _csma_b_speed(0.15), _preambleLength(6), _lora_symbol_time_ms(0.0),
-    _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
-     _packet{0}, _onReceive(NULL), _txp(0) {};
+    _dcd_waiting(false), _dcd_sample(0),
+    _csma_slot_ms(CSMA_SLOT_MIN_MS),
+    _preambleLength(LORA_PREAMBLE_SYMBOLS_MIN), _lora_symbol_time_ms(0.0),
+    _lora_preamble_time_ms(0), _lora_header_time_ms(0), _lora_symbol_rate(0.0), _lora_us_per_byte(0.0), _bitrate(0),
+     _packet{0}, _onReceive(NULL), _txp(0), _ldro(false), _limit_rate(false), _interference_detected(false), _avoid_interference(true), _difs_ms(CSMA_SIFS_MS + 2 * _csma_slot_ms), _difs_wait_start(0), _cw_wait_start(0), _cw_wait_target(0), _cw_wait_passed(0), _csma_cw(-1), _cw_band(1), _cw_min(0), _cw_max(CSMA_CW_PER_BAND_WINDOWS), _noise_floor_sampled(false), _noise_floor_sample(0), _noise_floor_buffer({0}), _noise_floor(-292), _led_id_filter(0), _preamble_detected_at(0) {};
+
     virtual int begin() = 0;
     virtual void end() = 0;
 
@@ -119,17 +142,48 @@ public:
     virtual void setCodingRate4(int denominator) = 0;
     virtual uint8_t getCodingRate4() = 0;
     virtual void setPreambleLength(long length) = 0;
-    virtual uint8_t modemStatus() = 0;
+    virtual bool dcd() = 0;
     virtual void enableCrc() = 0;
     virtual void disableCrc() = 0;
     virtual void enableTCXO() = 0;
     virtual void disableTCXO() = 0;
 
-    virtual byte random() = 0;
+    virtual uint8_t random() = 0;
 
     virtual void setSPIFrequency(uint32_t frequency) = 0;
 
-    virtual void updateBitrate() = 0;
+    void updateBitrate() {
+		if (!_radio_online) { _bitrate = 0; }
+		else {
+
+			_lora_symbol_rate = (float)getSignalBandwidth()/(float)(pow(2, _sf));
+			_lora_symbol_time_ms = (1.0/_lora_symbol_rate)*1000.0;
+			_bitrate = (uint32_t)(_sf * ( (4.0/(float)getCodingRate4()) / ((float)(pow(2, _sf))/((float)getSignalBandwidth()/1000.0)) ) * 1000.0);
+			_lora_us_per_byte = 1000000.0/((float)_bitrate/8.0);
+			
+			bool fast_rate   = _bitrate > LORA_FAST_THRESHOLD_BPS;
+			_limit_rate  = _bitrate > LORA_LIMIT_THRESHOLD_BPS;
+
+			int csma_slot_min_ms = CSMA_SLOT_MIN_MS;
+			float lora_preamble_target_ms = LORA_PREAMBLE_TARGET_MS;
+			if (fast_rate) { csma_slot_min_ms        -= CSMA_SLOT_MIN_FAST_DELTA;
+											 lora_preamble_target_ms -= LORA_PREAMBLE_FAST_DELTA; }
+			
+			_csma_slot_ms = _lora_symbol_time_ms*CSMA_SLOT_SYMBOLS;
+			if (_csma_slot_ms > CSMA_SLOT_MAX_MS) { _csma_slot_ms = CSMA_SLOT_MAX_MS; }
+			if (_csma_slot_ms < CSMA_SLOT_MIN_MS) { _csma_slot_ms = csma_slot_min_ms; }
+			_difs_ms = CSMA_SIFS_MS + 2*_csma_slot_ms;
+			
+			float target_preamble_symbols = lora_preamble_target_ms/_lora_symbol_time_ms;
+			if (target_preamble_symbols < LORA_PREAMBLE_SYMBOLS_MIN) { target_preamble_symbols = LORA_PREAMBLE_SYMBOLS_MIN; }
+			else { target_preamble_symbols = (ceil)(target_preamble_symbols); }
+			
+            setPreambleLength(target_preamble_symbols);
+			_lora_preamble_time_ms = (ceil)(_preambleLength * _lora_symbol_time_ms);
+			_lora_header_time_ms   = (ceil)(PHY_HEADER_LORA_SYMBOLS * _lora_symbol_time_ms);
+
+		}
+    }
     virtual void handleDio0Rise() = 0;
     virtual bool getPacketValidity() = 0;
     uint32_t getBitrate() { return _bitrate; };
@@ -171,132 +225,182 @@ public:
         }
         _longterm_channel_util = (float)longterm_channel_util_sum/(float)AIRTIME_BINS;
     
-          updateCSMAp();
-
-          //kiss_indicate_channel_stats(); // todo: enable me!
+        updateCSMAParameters();
+        kiss_indicate_channel_stats(_index);
     };
-    void addAirtime(uint16_t written) {
+    float getAirtime(uint16_t written) { 
+        float lora_symbols = 0;
         float packet_cost_ms = 0.0;
-        float payload_cost_ms = ((float)written * _lora_us_per_byte)/1000.0;
-        packet_cost_ms += payload_cost_ms;
-        packet_cost_ms += (_preambleLength+4.25)*_lora_symbol_time_ms;
-        packet_cost_ms += PHY_HEADER_LORA_SYMBOLS * _lora_symbol_time_ms;
+
+        if (interfaces[_index] == SX1276 || interfaces[_index] == SX1278) { 
+            lora_symbols += (8*written + PHY_CRC_LORA_BITS - 4*_sf + 8 + PHY_HEADER_LORA_SYMBOLS);
+            lora_symbols /=                          4*(_sf-2*_ldro);
+            lora_symbols *= getCodingRate4();
+            lora_symbols += _preambleLength + 0.25 + 8;
+            packet_cost_ms += lora_symbols * _lora_symbol_time_ms;
+        }
+        else if (interfaces[_index] == SX1262 || interfaces[_index] == SX1280) {
+            if (_sf < 7) {
+                lora_symbols += (8*written + PHY_CRC_LORA_BITS - 4*_sf + PHY_HEADER_LORA_SYMBOLS);
+                lora_symbols /=                              4*_sf;
+                lora_symbols *= getCodingRate4();
+                lora_symbols += _preambleLength + 2.25 + 8;
+                packet_cost_ms += lora_symbols * _lora_symbol_time_ms;
+
+            } else {
+                lora_symbols += (8*written + PHY_CRC_LORA_BITS - 4*_sf + 8 + PHY_HEADER_LORA_SYMBOLS);
+                lora_symbols /=                         4*(_sf-2*_ldro);
+                lora_symbols *= getCodingRate4();
+                lora_symbols += _preambleLength + 0.25 + 8;
+                packet_cost_ms += lora_symbols * _lora_symbol_time_ms;
+            }
+        }
+        _last_packet_cost = packet_cost_ms;
+        return packet_cost_ms;
+    }
+    void addAirtime() {
         uint16_t cb = current_airtime_bin();
         uint16_t nb = cb+1; if (nb == AIRTIME_BINS) { nb = 0; }
-        _airtime_bins[cb] += packet_cost_ms;
+        _airtime_bins[cb] += _last_packet_cost;
         _airtime_bins[nb] = 0;
     };
+    void updateModemStatus() {
+      #if MCU_VARIANT == MCU_ESP32
+        portENTER_CRITICAL(&update_lock);
+      #elif MCU_VARIANT == MCU_NRF52
+        portENTER_CRITICAL();
+      #endif
+
+      bool carrier_detected = dcd();
+      int current_rssi = currentRssi();
+      _last_status_update = millis();
+
+      #if MCU_VARIANT == MCU_ESP32
+        portEXIT_CRITICAL(&update_lock);
+      #elif MCU_VARIANT == MCU_NRF52
+        portEXIT_CRITICAL();
+      #endif
+
+      _interference_detected = !carrier_detected && (current_rssi > (_noise_floor+CSMA_INFR_THRESHOLD_DB));
+      if (_interference_detected) { if (_led_id_filter < LED_ID_TRIG) { _led_id_filter += 1; } }
+      else                       { if (_led_id_filter > 0) {_led_id_filter -= 1; } }
+
+      if (carrier_detected) { _dcd = true; } else { _dcd = false; }
+
+      _dcd_led = _dcd;
+      if (_dcd_led) { led_rx_on(); }
+      else {
+        if (_interference_detected) {
+          if (_led_id_filter >= LED_ID_TRIG && _noise_floor_sampled) { led_id_on(); }
+        } else {
+          if (_airtime_lock) { led_indicate_airtime_lock(); }
+          else              { led_rx_off(); led_id_off(); }
+        }
+      }
+    }
+    void updateNoiseFloor() {
+        int current_rssi = currentRssi();
+        if (!_dcd) {
+            if (!_noise_floor_sampled || current_rssi < _noise_floor + CSMA_INFR_THRESHOLD_DB) {
+                _noise_floor_buffer[_noise_floor_sample] = current_rssi;
+                _noise_floor_sample = _noise_floor_sample+1;
+                if (_noise_floor_sample >= NOISE_FLOOR_SAMPLES) {
+                    _noise_floor_sample %= NOISE_FLOOR_SAMPLES;
+                    _noise_floor_sampled = true;
+                }
+
+                if (_noise_floor_sampled) {
+                    _noise_floor = 0;
+                    for (int ni = 0; ni < NOISE_FLOOR_SAMPLES; ni++) { _noise_floor += _noise_floor_buffer[ni]; }
+                    _noise_floor /= NOISE_FLOOR_SAMPLES;
+                }
+            }
+        }
+    }
     void checkModemStatus() {
       if (millis()-_last_status_update >= STATUS_INTERVAL_MS) {
         updateModemStatus();
-    
-          _util_samples[_dcd_sample] = _dcd;
-          _dcd_sample = (_dcd_sample+1)%DCD_SAMPLES;
-          if (_dcd_sample % UTIL_UPDATE_INTERVAL == 0) {
+        updateNoiseFloor();
+
+        _util_samples[_dcd_sample] = _dcd;
+        _dcd_sample = (_dcd_sample+1)%DCD_SAMPLES;
+        if (_dcd_sample % UTIL_UPDATE_INTERVAL == 0) {
             int util_count = 0;
             for (int ui = 0; ui < DCD_SAMPLES; ui++) {
-              if (_util_samples[ui]) util_count++;
+                if (_util_samples[ui]) util_count++;
             }
             _local_channel_util = (float)util_count / (float)DCD_SAMPLES;
             _total_channel_util = _local_channel_util + _airtime;
             if (_total_channel_util > 1.0) _total_channel_util = 1.0;
-    
+
             int16_t cb = current_airtime_bin();
             uint16_t nb = cb+1; if (nb == AIRTIME_BINS) { nb = 0; }
             if (_total_channel_util > _longterm_bins[cb]) _longterm_bins[cb] = _total_channel_util;
             _longterm_bins[nb] = 0.0;
-    
+
             updateAirtime();
-          }
+        }
       }
     };
-      void updateModemStatus() {
-          #if PLATFORM == PLATFORM_ESP32 
-          portENTER_CRITICAL(&update_lock);
-          #elif PLATFORM == PLATFORM_NRF52 
-          portENTER_CRITICAL();
-          #endif
-    
-          uint8_t status = modemStatus();
-    
-          _last_status_update = millis();
-    
-          #if PLATFORM == PLATFORM_ESP32 
-          portEXIT_CRITICAL(&update_lock);
-          #elif PLATFORM == PLATFORM_NRF52 
-          portEXIT_CRITICAL();
-          #endif
-    
-          if ((status & SIG_DETECT) == SIG_DETECT) { _stat_signal_detected = true; } else { _stat_signal_detected = false; }
-          if ((status & SIG_SYNCED) == SIG_SYNCED) { _stat_signal_synced = true; } else { _stat_signal_synced = false; }
-          if ((status & RX_ONGOING) == RX_ONGOING) { _stat_rx_ongoing = true; } else { _stat_rx_ongoing = false; }
-    
-          // if (stat_signal_detected || stat_signal_synced || stat_rx_ongoing) {
-          if (_stat_signal_detected || _stat_signal_synced) {
-              if (_stat_rx_ongoing) {
-                  if (_dcd_count < DCD_THRESHOLD) {
-                      _dcd_count++;
-                  } else {
-                      _last_dcd = _last_status_update;
-                      _dcd_led = true;
-                      _dcd = true;
-                  }
-              }
-          } else {
-              if (_dcd_count == 0) {
-                  _dcd_led = false;
-              } else if (_dcd_count > DCD_LED_STEP_D) {
-                  _dcd_count -= DCD_LED_STEP_D;
-              } else {
-                  _dcd_count = 0;
-              }
-    
-              if (_last_status_update > _last_dcd+_csma_slot_ms) {
-                  _dcd = false;
-                  _dcd_led = false;
-                  _dcd_count = 0;
-              }
-          }
+    void updateCSMAParameters() {
+        int airtime_pct = (int)(_airtime*100);
+        int new_cw_band = _cw_band;
 
-    
-          if (_dcd_led) {
-              led_rx_on();
-          } else {
-              if (_airtime_lock) {
-                  led_indicate_airtime_lock();
-              } else {
-                  led_rx_off();
-              }
-          }
-    };
-    void setPostTxYieldTimeout(uint32_t timeout) { _post_tx_yield_timeout = timeout; };
-    uint32_t getPostTxYieldTimeout() { return _post_tx_yield_timeout; };
+        if (airtime_pct <= CSMA_BAND_1_MAX_AIRTIME) { new_cw_band = 1; }
+        else {
+            int at = airtime_pct + CSMA_BAND_1_MAX_AIRTIME;
+            new_cw_band = map(at, CSMA_BAND_1_MAX_AIRTIME, CSMA_BAND_N_MIN_AIRTIME, 2, CSMA_CW_BANDS);
+        }
+
+        if (new_cw_band > CSMA_CW_BANDS) { new_cw_band = CSMA_CW_BANDS; }
+        if (new_cw_band != _cw_band) { 
+            _cw_band = (uint8_t)(new_cw_band);
+            _cw_min  = (_cw_band-1) * CSMA_CW_PER_BAND_WINDOWS;
+            _cw_max  = (_cw_band) * CSMA_CW_PER_BAND_WINDOWS - 1;
+            kiss_indicate_csma_stats(_index);
+        }
+    }
     void setDCD(bool dcd) { _dcd = dcd; };
     bool getDCD() { return _dcd; };
     void setDCDWaiting(bool dcd_waiting) { _dcd_waiting = dcd_waiting; };
     bool getDCDWaiting() { return _dcd_waiting; };
-    void setDCDWaitUntil(uint32_t dcd_wait_until) { _dcd_wait_until = dcd_wait_until; };
-    bool getDCDWaitUntil() { return _dcd_wait_until; };
     float getAirtime() { return _airtime; };
     float getLongtermAirtime() { return _longterm_airtime; };
     float getTotalChannelUtil() { return _total_channel_util; };
     float getLongtermChannelUtil() { return _longterm_channel_util; };
-    float CSMASlope(float u) { return (pow(_e,_S*u-_S/2.0))/(pow(_e,_S*u-_S/2.0)+1.0); };
-    void updateCSMAp() {
-      _csma_p = (uint8_t)((1.0-(_csma_p_min+(_csma_p_max-_csma_p_min)*CSMASlope(_airtime+_csma_b_speed)))*255.0);
-    }
-    uint8_t getCSMAp() { return _csma_p; };
     void setCSMASlotMS(int slot_size) { _csma_slot_ms = slot_size; };
     int getCSMASlotMS() { return _csma_slot_ms; };
     float getSymbolTime() { return _lora_symbol_time_ms; };
     float getSymbolRate() { return _lora_symbol_rate; };
     long getPreambleLength() { return _preambleLength; };
+    void setAvdInterference(bool cfg) { _avoid_interference = cfg; };
+    bool getAvdInterference() { return _avoid_interference; };
+    bool getInterference() { return _interference_detected; };
+    int getNoiseFloor() { return _noise_floor; };
+    unsigned long getDifsMS() { return _difs_ms; };
+    uint8_t getCWBand() { return _cw_band; };
+    uint8_t getCWMin() { return _cw_min; };
+    uint8_t getCWMax() { return _cw_max; };
+    uint8_t getCW() { return _csma_cw; };
+    void setCW(uint8_t cw) { _csma_cw = cw; };
+    void setCWWaitTarget(unsigned long target) { _cw_wait_target = target; };
+    unsigned long getCWWaitTarget() { return _cw_wait_target; };
+    unsigned long getDifsWaitStart() { return _difs_wait_start; };
+    void setDifsWaitStart(unsigned long start) { _difs_wait_start = start; };
+    unsigned long getCWWaitStart() { return _cw_wait_start; };
+    void setCWWaitStart(unsigned long start) { _cw_wait_start = start; };
+    void addCWWaitPassed(unsigned long start) { _cw_wait_passed += start; };
+    void resetCWWaitPassed() { _cw_wait_passed = 0; };
+    bool getCWWaitStatus() { return _cw_wait_passed < _cw_wait_target; };
+    bool getLimitRate() { return _limit_rate; };
 protected:
     virtual void explicitHeaderMode() = 0;
     virtual void implicitHeaderMode() = 0;
 
     uint8_t _index;
+    uint32_t _bitrate;
     int8_t _txp;
+    uint8_t _sf;
     bool _radio_locked;
     bool _radio_online;
     float _st_airtime_limit;
@@ -306,6 +410,7 @@ protected:
     uint16_t _longterm_bins[AIRTIME_BINS] = {0};
     float _airtime;
     float _longterm_airtime;
+    float _last_packet_cost;
     float _local_channel_util;
     float _total_channel_util;
     float _longterm_channel_util;
@@ -318,21 +423,36 @@ protected:
     bool _dcd;
     bool _dcd_led;
     bool _dcd_waiting;
-    long _dcd_wait_until;
 	bool _util_samples[DCD_SAMPLES] = {false};
 	int _dcd_sample;
-    uint32_t _post_tx_yield_timeout;
-    uint8_t _csma_p;
-    int _csma_slot_ms;
-    float _csma_p_min;
-    float _csma_p_max;
-    float _csma_b_speed;
     long _preambleLength;
     float _lora_symbol_time_ms;
     float _lora_symbol_rate;
     float _lora_us_per_byte;
-    uint32_t _bitrate;
-  uint8_t _packet[255];
+    long _lora_preamble_time_ms;
+    long _lora_header_time_ms;
+    bool _ldro;
+    bool _limit_rate;
+    bool _interference_detected;
+    bool _avoid_interference;
+    int _csma_slot_ms;
+    unsigned long _difs_ms;
+    unsigned long _difs_wait_start;
+    unsigned long _cw_wait_start;
+    unsigned long _cw_wait_target;
+    unsigned long _cw_wait_passed;
+    int _csma_cw;
+    uint8_t _cw_band;
+    uint8_t _cw_min;
+    uint8_t _cw_max;
+    bool _noise_floor_sampled;
+    int _noise_floor_sample;
+    int _noise_floor_buffer[NOISE_FLOOR_SAMPLES];
+    int _noise_floor;
+    uint8_t _led_id_filter;
+    unsigned long _preamble_detected_at;
+
+    uint8_t _packet[255];
     void (*_onReceive)(uint8_t, int);
 };
 
@@ -383,7 +503,7 @@ public:
   void setCodingRate4(int denominator);
   uint8_t getCodingRate4();
   void setPreambleLength(long length);
-  uint8_t modemStatus();
+  bool dcd();
   void enableCrc();
   void disableCrc();
   void enableTCXO();
@@ -395,8 +515,6 @@ public:
   void setSPIFrequency(uint32_t frequency);
 
   void dumpRegisters(Stream& out);
-
-  void updateBitrate();
 
   void handleDio0Rise();
 private:
@@ -440,10 +558,8 @@ private:
   int _rxen;
   int _busy;
   uint32_t _frequency;
-  uint8_t _sf;
   uint8_t _bw;
   uint8_t _cr;
-  uint8_t _ldro;
   int _packetIndex;
   int _implicitHeaderMode;
   int _payloadLength;
@@ -466,6 +582,7 @@ public:
   int endPacket();
 
   int packetRssi(uint8_t pkt_snr_raw = 0xFF);
+  int packetRssi();
   int currentRssi();
   uint8_t packetRssiRaw();
   uint8_t currentRssiRaw();
@@ -501,7 +618,7 @@ public:
   void setCodingRate4(int denominator);
   uint8_t getCodingRate4();
   void setPreambleLength(long length);
-  uint8_t modemStatus();
+  bool dcd();
   void enableCrc();
   void disableCrc();
   void enableTCXO();
@@ -510,8 +627,6 @@ public:
   byte random();
 
   void setSPIFrequency(uint32_t frequency);
-
-  void updateBitrate();
 
   void handleDio0Rise();
   bool getPacketValidity();
@@ -544,7 +659,6 @@ private:
   int _packetIndex;
   int _implicitHeaderMode;
   bool _preinit_done;
-  uint8_t _sf;
   uint8_t _cr;
   uint32_t _bw;
 };
@@ -595,7 +709,7 @@ public:
   void setCodingRate4(int denominator);
   uint8_t getCodingRate4();
   void setPreambleLength(long length);
-  uint8_t modemStatus();
+  bool dcd();
   void enableCrc();
   void disableCrc();
   void enableTCXO();
@@ -606,8 +720,6 @@ public:
   void setSPIFrequency(uint32_t frequency);
 
   void dumpRegisters(Stream& out);
-
-  void updateBitrate();
 
   void handleDio0Rise();
 
@@ -652,7 +764,6 @@ private:
   int _busy;
   int _modem;
   uint32_t _frequency;
-  uint8_t _sf;
   uint8_t _bw;
   uint8_t _cr;
   int _packetIndex;
@@ -664,5 +775,8 @@ private:
   bool _preinit_done;
   int _rxPacketLength;
   bool _tcxo;
+  uint8_t _preamble_e;
+  uint8_t _preamble_m;
+  uint32_t _last_preamble;
 };
 #endif

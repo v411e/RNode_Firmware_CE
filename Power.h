@@ -82,6 +82,22 @@
   int bat_charged_samples = 0;
   bool bat_voltage_dropping = false;
   float bat_delay_v = 0;
+#elif BOARD_MODEL == BOARD_T3S3
+  #define BAT_V_MIN       3.15
+  #define BAT_V_MAX       4.217
+  #define BAT_V_CHG       4.48
+  #define BAT_V_FLOAT     4.33
+  #define BAT_SAMPLES     5
+  const uint8_t pin_vbat = 1;
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+  float bat_state_change_v = 0;
 #elif BOARD_MODEL == BOARD_TDECK
   #define BAT_V_MIN       3.15
   #define BAT_V_MAX       4.3
@@ -115,6 +131,39 @@
   bool bat_voltage_dropping = false;
   float bat_delay_v = 0;
   float bat_state_change_v = 0;
+#elif BOARD_MODEL == BOARD_HELTEC_T114
+  #define BAT_V_MIN       3.15
+  #define BAT_V_MAX       4.165
+  #define BAT_V_CHG       4.48
+  #define BAT_V_FLOAT     4.33
+  #define BAT_SAMPLES     7
+  const uint8_t pin_vbat = 4;
+  const uint8_t pin_ctrl = 6;
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+  float bat_state_change_v = 0;
+#elif BOARD_MODEL == BOARD_TECHO
+  #define BAT_V_MIN       3.15
+  #define BAT_V_MAX       4.16
+  #define BAT_V_CHG       4.48
+  #define BAT_V_FLOAT     4.33
+  #define BAT_SAMPLES     7
+  const uint8_t pin_vbat = 4;
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+  float bat_state_change_v = 0;
 #endif
 
 uint32_t last_pmu_update = 0;
@@ -125,14 +174,20 @@ uint8_t pmu_rc = 0;
 void kiss_indicate_battery();
 
 void measure_battery() {
-  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_HELTEC32_V3 || BOARD_MODEL == BOARD_TDECK
+  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_HELTEC32_V3 || BOARD_MODEL == BOARD_TDECK || BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_HELTEC_T114 || BOARD_MODEL == BOARD_TECHO
     battery_installed = true;
     battery_indeterminate = true;
 
     #if BOARD_MODEL == BOARD_HELTEC32_V3
       float battery_measurement = (float)(analogRead(pin_vbat)) * 0.0041;
+    #elif BOARD_MODEL == BOARD_T3S3
+      float battery_measurement = (float)(analogRead(pin_vbat)) / 4095.0*6.7828;
+    #elif BOARD_MODEL == BOARD_HELTEC_T114
+      float battery_measurement = (float)(analogRead(pin_vbat)) * 0.017165;
+    #elif BOARD_MODEL == BOARD_TECHO
+      float battery_measurement = (float)(analogRead(pin_vbat)) * 0.007067;
     #else
-      float battery_measurement = (float)(analogRead(pin_vbat)) / 4095.0*2.0*3.3*1.1;
+      float battery_measurement = (float)(analogRead(pin_vbat)) / 4095.0*7.26;
     #endif
 
     bat_v_samples[bat_samples_count%BAT_SAMPLES] = battery_measurement;
@@ -197,13 +252,14 @@ void measure_battery() {
         }
       }
 
+      #if MCU_VARIANT == MCU_NRF52
+        if (bt_state != BT_STATE_OFF) { blebas.write(battery_percent); }
+      #endif
+
       // if (bt_state == BT_STATE_CONNECTED) {
       //   SerialBT.printf("Bus voltage %.3fv. Unfiltered %.3fv.", battery_voltage, bat_v_samples[BAT_SAMPLES-1]);
-      //   if (bat_voltage_dropping) {
-      //     SerialBT.printf(" Voltage is dropping. Percentage %.1f%%.", battery_percent);
-      //   } else {
-      //     SerialBT.printf(" Voltage is not dropping. Percentage %.1f%%.", battery_percent);
-      //   }
+      //   if (bat_voltage_dropping) { SerialBT.printf(" Voltage is dropping. Percentage %.1f%%.", battery_percent); }
+      //   else                      { SerialBT.printf(" Voltage is not dropping. Percentage %.1f%%.", battery_percent); }
       //   if (battery_state == BATTERY_STATE_DISCHARGING) { SerialBT.printf(" Battery discharging. delay_v %.3fv", bat_delay_v); }
       //   if (battery_state == BATTERY_STATE_CHARGING) { SerialBT.printf(" Battery charging. delay_v %.3fv", bat_delay_v); }
       //   if (battery_state == BATTERY_STATE_CHARGED) { SerialBT.print(" Battery is charged."); }
@@ -378,12 +434,16 @@ void update_pmu() {
 }
 
 bool init_pmu() {
-  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_TDECK
+  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_TDECK || BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_TECHO
     pinMode(pin_vbat, INPUT);
     return true;
   #elif BOARD_MODEL == BOARD_HELTEC32_V3
     pinMode(pin_ctrl,OUTPUT);
     digitalWrite(pin_ctrl, LOW);
+    return true;
+  #elif BOARD_MODEL == BOARD_HELTEC_T114
+    pinMode(pin_ctrl,OUTPUT);
+    digitalWrite(pin_ctrl, HIGH);
     return true;
   #elif BOARD_MODEL == BOARD_TBEAM
     Wire.begin(I2C_SDA, I2C_SCL);

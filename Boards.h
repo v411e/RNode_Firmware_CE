@@ -40,13 +40,14 @@
   #define MODEL_A2            0xA2 // RNode v2.1, 433 MHz
   #define MODEL_A7            0xA7 // RNode v2.1, 868 MHz
 
-  #define BOARD_RNODE_NG_22   0x42 // RNode hardware revision v2.2 (T3S3)
-  #define MODEL_A1            0xA1 // RNode v2.2, 433 MHz with SX1268
-  #define MODEL_A5            0xA5 // RNode v2.2, 433 MHz with SX1278
-  #define MODEL_A6            0xA6 // RNode v2.2, 868 MHz with SX1262
-  #define MODEL_AA            0xAA // RNode v2.2, 868 MHz with SX1276
+  #define BOARD_T3S3          0x42 // T3S3 devices
+  #define MODEL_A1            0xA1 // T3S3, 433 MHz with SX1268
+  #define MODEL_A5            0xA5 // T3S3, 433 MHz with SX1278
+  #define MODEL_A6            0xA6 // T3S3, 868 MHz with SX1262
+  #define MODEL_AA            0xAA // T3S3, 868 MHz with SX1276
+  #define MODEL_AC            0xAC // T3S3, 2.4 GHz with SX1280 and PA
 
-  #define PRODUCT_TBEAM       0xE0 // T-Beam - sold by LilyGO
+  #define PRODUCT_TBEAM       0xE0 // T-Beam devices
   #define BOARD_TBEAM         0x33
   #define MODEL_E4            0xE4 // T-Beam SX1278, 433 Mhz
   #define MODEL_E9            0xE9 // T-Beam SX1276, 868 Mhz
@@ -73,32 +74,24 @@
   #define MODEL_B3            0xB3 // LilyGO T3 v2.0, 433 MHz
   #define MODEL_B8            0xB8 // LilyGO T3 v2.0, 868 MHz
 
-  #define PRODUCT_T32_21      0xB1 // T3 v2.1 - sold by LilyGO
+  #define PRODUCT_T32_21      0xB1
   #define BOARD_LORA32_V2_1   0x37
-  #define MODEL_B4            0xB4 // LilyGO T3 v2.1, 433 MHz
-  #define MODEL_B9            0xB9 // LilyGO T3 v2.1, 868 MHz
+  #define MODEL_B4            0xB4  // LilyGO T3 v2.1, 433 MHz
+  #define MODEL_B9            0xB9  // LilyGO T3 v2.1, 868 MHz
 
-  #define BOARD_T3S3          0x43 // T3S3 - sold by LilyGO
-  #define MODEL_A1 0xA1            // T3S3 SX1262 868/915 MHz
-  #define MODEL_AB 0xAB            // T3S3 SX1276 868/915 MHz
-  #define MODEL_A5 0xA5            // T3S3 SX1278 433 MHz
-  #define MODEL_AC 0xAC            // T3S3 SX1280 2.4 GHz w/ PA
-
-  #define PRODUCT_TECHO 0x15       // LilyGO T-Echo devices
-  #define BOARD_TECHO         0x44
-  #define MODEL_16 0x16            // T-Echo 433 MHz
-  #define MODEL_17 0x17            // T-Echo 868/915 MHz
-
-
-  #define PRODUCT_H32_V2      0xC0 // LoRa32 v2 - sold by Heltec
+  #define PRODUCT_H32_V2      0xC0  // Board code 0x38
   #define BOARD_HELTEC32_V2   0x38
-  #define MODEL_C4            0xC4 // Heltec Lora32 v2, 433 MHz
-  #define MODEL_C9            0xC9 // Heltec Lora32 v2, 868 MHz
+  #define MODEL_C4            0xC4  // Heltec Lora32 v2, 433 MHz
+  #define MODEL_C9            0xC9  // Heltec Lora32 v2, 868 MHz
 
-  #define PRODUCT_H32_V3      0xC1 // LoRa32 v3 - sold by Heltec
+  #define PRODUCT_H32_V3      0xC1
   #define BOARD_HELTEC32_V3   0x3A
   #define MODEL_C5            0xC5 // Heltec Lora32 v3, 433 MHz
   #define MODEL_CA            0xCA // Heltec Lora32 v3, 868 MHz
+  
+  #define PRODUCT_H_W_PAPER   0xC3
+  #define BOARD_H_W_PAPER     0x3E
+  #define MODEL_C8            0xC8
 
   #define PRODUCT_RAK4631     0x10 // RAK4631 - sold by RAKWireless
   #define BOARD_RAK4631       0x51
@@ -113,6 +106,16 @@
 
   #define BOARD_E22_ESP32     0x45 // Custom Ebyte E22 board design for meshtastic, source:
                                    // https://github.com/NanoVHF/Meshtastic-DIY/blob/main/Schematics/E-Byte_E22/Mesh_Ebyte_E22-XXXM30S.pdf
+
+  #define PRODUCT_HELTEC_T114 0xC2 // Heltec Mesh Node T114
+  #define BOARD_HELTEC_T114   0x3C
+  #define MODEL_C6            0xC6 // Heltec Mesh Node T114, 470-510 MHz
+  #define MODEL_C7            0xC7 // Heltec Mesh Node T114, 863-928 MHz
+
+  #define PRODUCT_TECHO       0x15 // LilyGO T-Echo devices
+  #define BOARD_TECHO         0x44
+  #define MODEL_16            0x16 // T-Echo 433 MHz
+  #define MODEL_17            0x17 // T-Echo 868/915 MHz
 
   #define PRODUCT_HMBRW       0xF0
   #define BOARD_HMBRW         0x32
@@ -249,7 +252,8 @@
       };
 
       #elif BOARD_VARIANT == MODEL_E3 || BOARD_VARIANT == MODEL_E8
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX126X};
+      #define OCP_TUNED 0x38
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
           {
@@ -525,6 +529,7 @@
       #define PIN_WAKEUP GPIO_NUM_0
       #define WAKEUP_LEVEL 0
       #define INTERFACE_COUNT 1
+      #define OCP_TUNED 0x38
 
       const int pin_btn_usr1 = 0;
 
@@ -560,6 +565,69 @@
               -1  // pin_tcxo_enable
           }
       };
+
+    #elif BOARD_MODEL == BOARD_H_W_PAPER
+      // Heltec Wireless Paper. Basically the Heltec LoRa32 v3 with an eink display.
+      // TODO, need to confirm that the display is a 213BN
+      #define IS_ESP32S3 true
+      #define HAS_DISPLAY true
+      #define HAS_BLUETOOTH false
+      #define HAS_BLE true
+      #define HAS_PMU true
+      #define HAS_CONSOLE true
+      #define HAS_EEPROM true
+      #define HAS_INPUT true
+      #define HAS_SLEEP true
+      #define HAS_DISPLAY true
+      #define DISPLAY EINK_BW
+      #define DISPLAY_SCALE_OVERRIDE true
+      #define DISPLAY_SCALE 1.90625
+      #define DISPLAY_MODEL GxEPD2_213_BN
+      #define PIN_WAKEUP GPIO_NUM_0
+      #define WAKEUP_LEVEL 0
+      #define INTERFACE_COUNT 1
+      #define OCP_TUNED 0x38
+
+      const int pin_btn_usr1 = 0;
+
+      #if defined(EXTERNAL_LEDS)
+        const int pin_led_rx = 13;
+        const int pin_led_tx = 14;
+      #else
+        const int pin_led_rx = 35;
+        const int pin_led_tx = 35;
+      #endif
+
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              true, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+              8, // pin_ss
+              9, // pin_sclk
+              10, // pin_mosi
+              11, // pin_miso
+              13, // pin_busy
+              14, // pin_dio
+              12, // pin_reset
+              -1, // pin_txen
+              -1, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
+
+      const int pin_disp_cs = 4;
+      const int pin_disp_dc = 5;
+      const int pin_disp_reset = 6;
+      const int pin_disp_busy = 7;
+      const int pin_disp_en = 45;
 
     #elif BOARD_MODEL == BOARD_RNODE_NG_20
       #define HAS_DISPLAY true
@@ -636,7 +704,6 @@
         #endif
       #endif
 
-
       const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX127X
@@ -661,12 +728,14 @@
               -1  // pin_tcxo_enable
           }
       };
+   
+    // todo ce-ise all boards below here
 
     #elif BOARD_MODEL == BOARD_T3S3
       #define IS_ESP32S3 true
       #define HAS_DISPLAY true
       #define DISPLAY OLED
-      #define HAS_CONSOLE false
+      #define HAS_CONSOLE true
       #define HAS_BLUETOOTH false
       #define HAS_BLE true
       #define HAS_PMU true
@@ -678,10 +747,39 @@
       #define HAS_SLEEP true
       #define PIN_WAKEUP GPIO_NUM_0
       #define WAKEUP_LEVEL 0
-      #define INTERFACE_COUNT 1
-      // #define PIN_DISP_SLEEP 21
-      // #define DISP_SLEEP_LEVEL HIGH
       const int pin_btn_usr1 = 0;
+
+      const int pin_cs = 7;
+      const int pin_reset = 8;
+      const int pin_sclk = 5;
+      const int pin_mosi = 6;
+      const int pin_miso = 3;
+      
+      #if MODEM == SX1262
+        #define DIO2_AS_RF_SWITCH true
+        #define HAS_BUSY true
+        #define HAS_TCXO true
+        const int pin_busy = 34;
+        const int pin_dio = 33;
+        const int pin_tcxo_enable = -1;
+      #elif MODEM == SX1280
+        #define CONFIG_QUEUE_SIZE 6144
+        #define DIO2_AS_RF_SWITCH false
+        #define HAS_BUSY true
+        #define HAS_TCXO true
+        #define HAS_PA true
+        const int pa_max_input = 3;
+
+        #define HAS_RF_SWITCH_RX_TX true
+        const int pin_rxen = 21;
+        const int pin_txen = 10;
+        
+        const int pin_busy = 36;
+        const int pin_dio = 9;
+        const int pin_tcxo_enable = -1;
+      #else
+        const int pin_dio = 9;
+      #endif
       
       const int pin_np = 38;
       const int pin_dac = 25;
@@ -699,6 +797,101 @@
         #else
           const int pin_led_rx = 37;
           const int pin_led_tx = 37;
+        #endif
+      #endif
+
+    #elif BOARD_MODEL == BOARD_TDECK
+      #define IS_ESP32S3 true
+      #define MODEM SX1262
+      #define DIO2_AS_RF_SWITCH true
+      #define HAS_BUSY true
+      #define HAS_TCXO true
+
+      #define HAS_DISPLAY false
+
+      const int pin_poweron = 10;
+      const int pin_btn_usr1 = 0;
+
+      const int pin_cs = 9;
+      const int pin_reset = 17;
+      const int pin_sclk = 40;
+      const int pin_mosi = 41;
+      const int pin_miso = 38;
+      const int pin_tcxo_enable = -1;
+      const int pin_dio = 45;
+      const int pin_busy = 13;
+      
+      const int SD_MISO = 38;
+      const int SD_MOSI = 41;
+      const int SD_CLK = 40;
+      const int SD_CS = 39;
+
+      const int DISPLAY_DC = 11;
+      const int DISPLAY_CS = 12;
+      const int DISPLAY_MISO = 38;
+      const int DISPLAY_MOSI = 41;
+      const int DISPLAY_CLK = 40;
+      const int DISPLAY_BL_PIN = 42;
+
+      #if HAS_NP == false
+        #if defined(EXTERNAL_LEDS)
+          const int pin_led_rx = 43;
+          const int pin_led_tx = 43;
+        #else
+          const int pin_led_rx = 43;
+          const int pin_led_tx = 43;
+        #endif
+      #endif
+
+    #elif BOARD_MODEL == BOARD_TBEAM_S_V1
+      #define IS_ESP32S3 true
+      #define MODEM SX1262
+      #define DIO2_AS_RF_SWITCH true
+      #define HAS_BUSY true
+      #define HAS_TCXO true
+      #define OCP_TUNED 0x38
+
+      #define HAS_DISPLAY true
+      #define HAS_CONSOLE true
+      #define HAS_BLUETOOTH false
+      #define HAS_BLE true
+      #define HAS_PMU true
+      #define HAS_NP false
+      #define HAS_SD false
+      #define HAS_EEPROM true
+
+      #define HAS_INPUT true
+      #define HAS_SLEEP false
+      
+      #define PMU_IRQ 40
+      #define I2C_SCL 41
+      #define I2C_SDA 42
+
+      const int pin_btn_usr1 = 0;
+
+      const int pin_cs = 10;
+      const int pin_reset = 5;
+      const int pin_sclk = 12;
+      const int pin_mosi = 11;
+      const int pin_miso = 13;
+      const int pin_tcxo_enable = -1;
+      const int pin_dio = 1;
+      const int pin_busy = 4;
+      
+      const int SD_MISO = 37;
+      const int SD_MOSI = 35;
+      const int SD_CLK = 36;
+      const int SD_CS = 47;
+
+      const int IMU_CS = 34;
+
+      #if HAS_NP == false
+        #if defined(EXTERNAL_LEDS)
+          const int pin_led_rx = 43;
+          const int pin_led_tx = 43;
+        #else
+          const int pin_led_rx = 43;
+          const int pin_led_tx = 43;
         #endif
       #endif
 
@@ -931,7 +1124,7 @@
       //#define I2C_SCL 27
       #define CONFIG_QUEUE_1_SIZE 40000
       // first interface in list is the primary
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX126X};
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                   // SX1262
           {
@@ -974,8 +1167,7 @@
       const int pin_led_tx = LED_RED;
     #elif BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
       #define HAS_EEPROM false
-      #define HAS_DISPLAY true
-      #define DISPLAY EINK_BW
+      #define HAS_DISPLAY false 
       #define HAS_BLUETOOTH false
       #define HAS_BLE true
       #define HAS_CONSOLE false
@@ -995,7 +1187,7 @@
       #define INTERFACE_COUNT 1
 
       // first interface in list is the primary
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX126X};
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
           {
@@ -1020,13 +1212,18 @@
           }
       };
       #elif BOARD_VARIANT == MODEL_13 || BOARD_VARIANT == MODEL_14 || BOARD_VARIANT == MODEL_21
+      #define HAS_DISPLAY true
+      #define DISPLAY EINK_BW
+      #define DISPLAY_SCALE_OVERRIDE true
+      #define DISPLAY_SCALE 1.90625
+      #define DISPLAY_MODEL GxEPD2_213_BN
       #define INTERFACE_COUNT 2
 
       #define CONFIG_QUEUE_1_SIZE 40000
       #define CONFIG_UART_BUFFER_SIZE 40000 // \todo, does it have to be this big?
 
       // first interface in list is the primary
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX126X, SX128X};
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262, SX1280};
       const bool interface_cfg[INTERFACE_COUNT][3] = { 
                     // SX1262
           {
@@ -1082,9 +1279,176 @@
       const int pin_led_rx = LED_BLUE;
       const int pin_led_tx = LED_GREEN;
 
+    #elif BOARD_MODEL == BOARD_TECHO
+      #define _PINNUM(port, pin) ((port) * 32 + (pin))
+      #define MODEM SX1262
+      #define HAS_EEPROM false
+      #define HAS_BLUETOOTH false
+      #define HAS_BLE true
+      #define HAS_CONSOLE false
+      #define HAS_PMU true
+      #define HAS_NP false
+      #define HAS_SD false
+      #define HAS_TCXO true
+      #define HAS_BUSY true
+      #define HAS_INPUT true
+      #define HAS_SLEEP true
+      #define BLE_MANUFACTURER "LilyGO"
+      #define BLE_MODEL "T-Echo"
+
+      #define HAS_INPUT true
+      #define EEPROM_SIZE 296
+      #define EEPROM_OFFSET EEPROM_SIZE-EEPROM_RESERVED
+
+      #define CONFIG_UART_BUFFER_SIZE 32768
+      #define CONFIG_QUEUE_SIZE 6144
+      #define CONFIG_QUEUE_MAX_LENGTH 200
+
+      #define HAS_DISPLAY true
+      #define DISPLAY EINK_BW
+      #define HAS_BACKLIGHT true
+      #define DISPLAY_SCALE 1
+
+      #define LED_ON LOW
+      #define LED_OFF HIGH
+      #define PIN_LED_GREEN _PINNUM(1, 1)
+      #define PIN_LED_RED   _PINNUM(1, 3)
+      #define PIN_LED_BLUE  _PINNUM(0, 14)
+      #define PIN_VEXT_EN _PINNUM(0, 12)
+
+      const int pin_disp_cs = 30;
+      const int pin_disp_dc = 28;
+      const int pin_disp_reset = 2;
+      const int pin_disp_busy = 3;
+      const int pin_disp_en = -1;
+      const int pin_disp_sck = 31;
+      const int pin_disp_mosi = 29;
+      const int pin_disp_miso = -1;
+      const int pin_backlight = 43;
+
+      const int pin_btn_usr1 = _PINNUM(1, 10);
+      const int pin_btn_touch = _PINNUM(0, 11);
+
+      const int pin_reset = 25;
+      const int pin_cs = 24;
+      const int pin_sclk = 19;
+      const int pin_mosi = 22;
+      const int pin_miso = 23;
+      const int pin_busy = 17;
+      const int pin_dio = 20;
+      const int pin_tcxo_enable = 21;
+      const int pin_led_rx = PIN_LED_BLUE;
+      const int pin_led_tx = PIN_LED_RED;
+
+    #elif BOARD_MODEL == BOARD_HELTEC_T114
+      #define MODEM SX1262
+      #define HAS_EEPROM false
+      #define HAS_DISPLAY true
+      #define HAS_BLUETOOTH false
+      #define HAS_BLE true
+      #define HAS_CONSOLE false
+      #define HAS_PMU true
+      #define HAS_NP true
+      #define HAS_SD false
+      #define HAS_TCXO true
+      #define HAS_BUSY true
+      #define HAS_INPUT true
+      #define HAS_SLEEP true
+      #define DIO2_AS_RF_SWITCH true
+      #define CONFIG_UART_BUFFER_SIZE 6144
+      #define CONFIG_QUEUE_SIZE 6144
+      #define CONFIG_QUEUE_MAX_LENGTH 200
+      #define EEPROM_SIZE 296
+      #define EEPROM_OFFSET EEPROM_SIZE-EEPROM_RESERVED
+      #define BLE_MANUFACTURER "Heltec"
+      #define BLE_MODEL "T114"
+
+      #define PIN_T114_ADC_EN 6
+      #define PIN_VEXT_EN 21
+
+      // LED
+      #define LED_T114_GREEN 3
+      #define PIN_T114_LED 14
+      #define NP_M 1
+      const int pin_np = PIN_T114_LED;
+
+      // SPI
+      #define PIN_T114_MOSI 22
+      #define PIN_T114_MISO 23
+      #define PIN_T114_SCK  19
+      #define PIN_T114_SS   24
+
+      // SX1262
+      #define PIN_T114_RST  25
+      #define PIN_T114_DIO1 20
+      #define PIN_T114_BUSY 17
+
+      // TFT
+      #define DISPLAY_SCALE_OVERRIDE true
+      #define DISPLAY_SCALE 2
+      #define PIN_T114_TFT_MOSI 9
+      #define PIN_T114_TFT_MISO 11 // not connected
+      #define PIN_T114_TFT_SCK 8
+      #define PIN_T114_TFT_SS 11
+      #define PIN_T114_TFT_DC 12
+      #define PIN_T114_TFT_RST 2
+      #define PIN_T114_TFT_EN 3
+      #define PIN_T114_TFT_BLGT 15
+
+      // pins for buttons on Heltec T114
+      const int pin_btn_usr1 = 42;
+
+      // pins for sx1262 on Heltec T114
+      const int pin_reset = PIN_T114_RST;
+      const int pin_cs = PIN_T114_SS;
+      const int pin_sclk = PIN_T114_SCK;
+      const int pin_mosi = PIN_T114_MOSI;
+      const int pin_miso = PIN_T114_MISO;
+      const int pin_busy = PIN_T114_BUSY;
+      const int pin_dio = PIN_T114_DIO1;
+      const int pin_led_rx = 35;
+      const int pin_led_tx = 35;
+      const int pin_tcxo_enable = -1;
+
+      // pins for ST7789 display on Heltec T114
+      const int DISPLAY_DC = PIN_T114_TFT_DC;
+      const int DISPLAY_CS = PIN_T114_TFT_SS;
+      const int DISPLAY_MISO = PIN_T114_TFT_MISO;
+      const int DISPLAY_MOSI = PIN_T114_TFT_MOSI;
+      const int DISPLAY_CLK = PIN_T114_TFT_SCK;
+      const int DISPLAY_BL_PIN = PIN_T114_TFT_BLGT;
+      const int DISPLAY_RST = PIN_T114_TFT_RST;
+
     #else
       #error An unsupported nRF board was selected. Cannot compile RNode firmware.
     #endif
 
   #endif
+
+  #ifndef DISPLAY_SCALE
+    #define DISPLAY_SCALE 1
+  #endif
+
+  #ifndef HAS_BUSY
+    const int pin_busy = -1;
+  #endif
+
+  #ifndef LED_ON
+    #define LED_ON HIGH
+  #endif
+  
+  #ifndef LED_OFF
+    #define LED_OFF LOW
+  #endif
+
+  // Default OCP value if not specified
+  // in board configuration
+  #ifndef OCP_TUNED
+    #define OCP_TUNED 0x38
+  #endif
+
+  #ifndef NP_M
+    #define NP_M 0.15
+  #endif
+
 #endif

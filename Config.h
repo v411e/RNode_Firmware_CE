@@ -65,11 +65,6 @@
 	// packet RSSI register
 	const int  rssi_offset = 157;
 
-    // Default LoRa settings
-    const int lora_rx_turnaround_ms = 66;
-    const int lora_post_tx_yield_slots = 6;
-    #define LORA_CAD_SYMBOLS 3
-
 	// Operational variables
 	bool community_fw  = true;
 	bool hw_ready      = false;
@@ -84,6 +79,7 @@
 	uint8_t model     = 0x00;
 	uint8_t hwrev     = 0x00;
 
+    int     current_rssi    = -292;
 	int		last_rssi		= -292;
 	uint8_t last_rssi_raw   = 0x00;
 	uint8_t last_snr_raw	= 0x80;
@@ -108,8 +104,21 @@
 	uint32_t stat_rx		= 0;
 	uint32_t stat_tx		= 0;
 
-    unsigned long last_tx   = 0;
-    unsigned long last_rx   = 0;
+	bool stat_signal_detected   = false;
+	bool stat_signal_synced     = false;
+	bool stat_rx_ongoing        = false;
+	bool dcd                    = false;
+	bool dcd_led                = false;
+	bool dcd_waiting            = false;
+	long dcd_wait_until         = 0;
+	uint16_t dcd_count          = 0;
+	uint16_t dcd_threshold      = 2;
+
+	uint32_t last_status_update = 0;
+	uint32_t last_dcd = 0;
+
+    uint32_t last_rx = 0;
+    uint32_t last_tx = 0;
 
     // Power management
     #define BATTERY_STATE_UNKNOWN     0x00
@@ -125,6 +134,7 @@
     uint8_t battery_state = 0x00;
     uint8_t display_intensity = 0xFF;
     uint8_t display_addr = 0xFF;
+    volatile bool display_updating = false;
     bool display_blanking_enabled = false;
     bool display_diagnostics = true;    
     bool device_init_done = false;
