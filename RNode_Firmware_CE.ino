@@ -338,7 +338,7 @@ void setup() {
 
     display_unblank();
     disp_ready = display_init();
-    update_display();
+    if (disp_ready) update_display();
   #endif
 
     #if HAS_PMU == true
@@ -934,7 +934,7 @@ void serial_callback(uint8_t sbyte) {
       kiss_indicate_implicit_length();
     } else if (command == CMD_LEAVE) {
       if (sbyte == 0xFF) {
-        //display_unblank();
+        display_unblank();
         cable_state   = CABLE_STATE_DISCONNECTED;
         //current_rssi  = -292;
         last_rssi     = -292;
