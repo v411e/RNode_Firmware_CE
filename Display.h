@@ -154,21 +154,19 @@ uint32_t last_epd_full_refresh = 0;
 #define REFRESH_PERIOD 300000 // 5 minutes in ms
 #else
   #if DISPLAY == OLED
-  #if BOARD_MODEL == BOARD_TDECK
+    Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
+  #elif BOARD_MODEL == BOARD_TDECK
     Adafruit_ST7789 display = Adafruit_ST7789(DISPLAY_CS, DISPLAY_DC, -1);
   #elif BOARD_MODEL == BOARD_TBEAM_S_V1
     Adafruit_SH1106G display = Adafruit_SH1106G(DISP_W, DISP_H, &Wire, -1);
   #elif BOARD_MODEL == BOARD_HELTEC_T114
     ST7789Spi display(&SPI1, DISPLAY_RST, DISPLAY_DC, DISPLAY_CS);
-  #else
-    Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
   #endif
   float disp_target_fps = 7;
   #define SCREENSAVER_TIME 500 // ms
   uint32_t last_screensaver = 0;
   #define SCREENSAVER_INTERVAL 600000 // 10 minutes in ms
   bool screensaver_enabled = false;
-  #endif
 #endif
 
 #define DISP_MODE_UNKNOWN   0x00
@@ -349,6 +347,7 @@ bool display_init() {
       display.setPartialWindow(0, 0, DISP_W, DISP_H);
 
       display.epd2.setBusyCallback(busyCallback);
+      #endif
     #elif BOARD_MODEL == BOARD_H_W_PAPER
       pinMode(pin_disp_en, OUTPUT);
       digitalWrite(pin_disp_en, LOW);
@@ -662,13 +661,6 @@ void draw_battery_bars(int px, int py) {
         }
 
         if (battery_indeterminate && battery_state == BATTERY_STATE_CHARGING && !disable_charge_status) {
-          //#if DISP_H == 122
-          //    stat_area.fillRect(px-2, py-2, 24, 9, DISPLAY_BLACK);
-          //    stat_area.drawBitmap(px-2, py-5, bm_plug, 34, 13, DISPLAY_WHITE, DISPLAY_BLACK);
-          //#else
-          //    stat_area.fillRect(px-2, py-2, 18, 7, DISPLAY_BLACK);
-          //    stat_area.drawBitmap(px-2, py-2, bm_plug, 17, 7, DISPLAY_WHITE, DISPLAY_BLACK);
-          //#endif
           stat_area.fillRect(px-2, py-2, 18, 7, DISPLAY_BLACK);
           stat_area.drawBitmap(px-2, py-2, bm_plug, 17, 7, DISPLAY_WHITE, DISPLAY_BLACK);
         } else {
@@ -714,46 +706,6 @@ void draw_quality_bars(int px, int py) {
     if (quality > 100.0) quality = 100.0;
     if (quality < 0.0) quality = 0.0;
 
-//#if DISP_H == 122
-//    stat_area.fillRect(px, py, 26, 14, DISPLAY_BLACK);
-//    if (quality > 0) {
-//        stat_area.drawLine(px+0*4, py+14, px+0*4, py+6, DISPLAY_WHITE);
-//        stat_area.drawLine(px+0*4+1, py+14, px+0*4+1, py+6, DISPLAY_WHITE);
-//    }
-//    if (quality > 15) {
-//        stat_area.drawLine(px+1*4, py+14, px+1*4, py+5, DISPLAY_WHITE);
-//        stat_area.drawLine(px+1*4+1, py+14, px+1*4+1, py+5, DISPLAY_WHITE);
-//    }
-//    if (quality > 30) {
-//        stat_area.drawLine(px+2*4, py+14, px+2*4, py+4, DISPLAY_WHITE);
-//        stat_area.drawLine(px+2*4+1, py+14, px+2*4+1, py+4, DISPLAY_WHITE);
-//    }
-//    if (quality > 45) {
-//        stat_area.drawLine(px+3*4, py+14, px+3*4, py+3, DISPLAY_WHITE);
-//        stat_area.drawLine(px+3*4+1, py+14, px+3*4+1, py+3, DISPLAY_WHITE);
-//    }
-//    if (quality > 60) {
-//        stat_area.drawLine(px+4*4, py+14, px+4*4, py+2, DISPLAY_WHITE);
-//        stat_area.drawLine(px+4*4+1, py+14, px+4*4+1, py+2, DISPLAY_WHITE);
-//    }
-//    if (quality > 75) {
-//        stat_area.drawLine(px+5*4, py+14, px+5*4, py+1, DISPLAY_WHITE);
-//        stat_area.drawLine(px+5*4+1, py+14, px+5*4+1, py+1, DISPLAY_WHITE);
-//    }
-//    if (quality > 90) {
-//        stat_area.drawLine(px+6*4, py+14, px+6*4, py+0, DISPLAY_WHITE);
-//        stat_area.drawLine(px+6*4+1, py+14, px+6*4+1, py+0, DISPLAY_WHITE);
-//    }
-//#else
-//    stat_area.fillRect(px, py, 13, 7, DISPLAY_BLACK);
-//    if (quality > 0)  stat_area.drawLine(px+0*2, py+7, px+0*2, py+6, DISPLAY_WHITE);
-//    if (quality > 15) stat_area.drawLine(px+1*2, py+7, px+1*2, py+5, DISPLAY_WHITE);
-//    if (quality > 30) stat_area.drawLine(px+2*2, py+7, px+2*2, py+4, DISPLAY_WHITE);
-//    if (quality > 45) stat_area.drawLine(px+3*2, py+7, px+3*2, py+3, DISPLAY_WHITE);
-//    if (quality > 60) stat_area.drawLine(px+4*2, py+7, px+4*2, py+2, DISPLAY_WHITE);
-//    if (quality > 75) stat_area.drawLine(px+5*2, py+7, px+5*2, py+1, DISPLAY_WHITE);
-//    if (quality > 90) stat_area.drawLine(px+6*2, py+7, px+6*2, py+0, DISPLAY_WHITE);
-//#endif
     // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
     // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
     if (quality > 0)  stat_area.drawLine(px+0*2, py+7, px+0*2, py+6, DISPLAY_WHITE);
@@ -786,46 +738,6 @@ void draw_signal_bars(int px, int py) {
     if (signal > 100.0) signal = 100.0;
     if (signal < 0.0) signal = 0.0;
 
-//#if DISP_H == 122
-//    stat_area.fillRect(px, py, 26, 14, DISPLAY_BLACK);
-//    if (signal > 85) {
-//        stat_area.drawLine(px+0*4, py+14, px+0*4, py+0, DISPLAY_WHITE);
-//        stat_area.drawLine(px+0*4+1, py+14, px+0*4+1, py+0, DISPLAY_WHITE);
-//    }
-//    if (signal > 72) {
-//        stat_area.drawLine(px+1*4, py+14, px+1*4, py+1, DISPLAY_WHITE);
-//        stat_area.drawLine(px+1*4+1, py+14, px+1*4+1, py+1, DISPLAY_WHITE);
-//    }
-//    if (signal > 59) {
-//        stat_area.drawLine(px+2*4, py+14, px+2*4, py+2, DISPLAY_WHITE);
-//        stat_area.drawLine(px+2*4+1, py+14, px+2*4+1, py+2, DISPLAY_WHITE);
-//    }
-//    if (signal > 46) {
-//        stat_area.drawLine(px+3*4, py+14, px+3*4, py+3, DISPLAY_WHITE);
-//        stat_area.drawLine(px+3*4+1, py+14, px+3*4+1, py+3, DISPLAY_WHITE);
-//    }
-//    if (signal > 33) {
-//        stat_area.drawLine(px+4*4, py+14, px+4*4, py+4, DISPLAY_WHITE);
-//        stat_area.drawLine(px+4*4+1, py+14, px+4*4+1, py+4, DISPLAY_WHITE);
-//    }
-//    if (signal > 20) {
-//        stat_area.drawLine(px+5*4, py+14, px+5*4, py+5, DISPLAY_WHITE);
-//        stat_area.drawLine(px+5*4+1, py+14, px+5*4+1, py+5, DISPLAY_WHITE);
-//    }
-//    if (signal > 7)  {
-//        stat_area.drawLine(px+6*4, py+14, px+6*4, py+6, DISPLAY_WHITE);
-//        stat_area.drawLine(px+6*4+1, py+14, px+6*4+1, py+6, DISPLAY_WHITE);
-//    }
-//#else
-//    stat_area.fillRect(px, py, 13, 7, DISPLAY_BLACK);
-//    if (signal > 85) stat_area.drawLine(px+0*2, py+7, px+0*2, py+0, DISPLAY_WHITE);
-//    if (signal > 72) stat_area.drawLine(px+1*2, py+7, px+1*2, py+1, DISPLAY_WHITE);
-//    if (signal > 59) stat_area.drawLine(px+2*2, py+7, px+2*2, py+2, DISPLAY_WHITE);
-//    if (signal > 46) stat_area.drawLine(px+3*2, py+7, px+3*2, py+3, DISPLAY_WHITE);
-//    if (signal > 33) stat_area.drawLine(px+4*2, py+7, px+4*2, py+4, DISPLAY_WHITE);
-//    if (signal > 20) stat_area.drawLine(px+5*2, py+7, px+5*2, py+5, DISPLAY_WHITE);
-//    if (signal > 7)  stat_area.drawLine(px+6*2, py+7, px+6*2, py+6, DISPLAY_WHITE);
-//#endif
     // Serial.printf("Last SNR: %.2f\n, quality: %.2f\n", snr, quality);
 
 #define WF_TX_SIZE 5
@@ -927,17 +839,6 @@ void draw_stat_area() {
       last_interface_page_flip = millis();
     }
 
-    //#if DISP_H == 122
-    //draw_cable_icon(6, 18);
-    //draw_bt_icon(6, 60);
-    //draw_lora_icon(interface_obj[0], 86, 18);
-
-    //// todo, expand support to show more than two interfaces on screen
-    //if (INTERFACE_COUNT > 1) {
-    //    draw_lora_icon(interface_obj[1], 86, 60);
-    //}
-    //draw_battery_bars(8, 113);
-    //#else
     draw_cable_icon(3, 8);
     draw_bt_icon(3, 30);
     draw_lora_icon(interface_obj[0], 45, 8);
@@ -954,16 +855,10 @@ void draw_stat_area() {
             break;
         }
     }
-      //#if DISP_H == 122
-      //draw_quality_bars(53, 109);
-      //draw_signal_bars(83, 109);
-      //draw_waterfall(50, 8);
-      //#else
     draw_quality_bars(28, 56);
     draw_signal_bars(44, 56);
     if (radio_online) {
       draw_waterfall(27, 4);
-      #endif
     }
   }
 }
@@ -990,275 +885,10 @@ void update_stat_area() {
   }
 }
 
+extern char bt_devname[11];
+extern char bt_dh[16];
+
 void draw_disp_area() {
-  //if (!device_init_done || firmware_update_mode) {
-  //  uint8_t p_by = 37;
-  //  if (disp_mode == DISP_MODE_LANDSCAPE || firmware_update_mode) {
-  //    p_by = 18;
-  //    disp_area.fillRect(0, 0, disp_area.width(), disp_area.height(), DISPLAY_BLACK);
-  //  }
-  //  #if DISP_H == 122
-  //  if (!device_init_done) disp_area.drawBitmap(0, p_by, bm_boot, disp_area.width(), 54, DISPLAY_WHITE);
-  //  if (firmware_update_mode) disp_area.drawBitmap(0, p_by, bm_fw_update, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //  #else
-  //  if (!device_init_done) disp_area.drawBitmap(0, p_by, bm_boot, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //  if (firmware_update_mode) disp_area.drawBitmap(0, p_by, bm_fw_update, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //  #endif
-  //} else {
-  //  if (!disp_ext_fb or bt_ssp_pin != 0) {
-  //    if (radio_online && display_diagnostics) {
-  //      #if DISP_H == 122
-  //        selected_radio = interface_obj[online_interface_list[interface_page]];
-  //        disp_area.fillRect(0,12,disp_area.width(),57, DISPLAY_BLACK); disp_area.fillRect(0,69,disp_area.width(),56, DISPLAY_WHITE);
-  //        disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(DISPLAY_WHITE);
-  //        disp_area.setTextSize(2); // scale text 2x
-
-  //        disp_area.setCursor(2, 22);
-  //        disp_area.print("On");
-  //        disp_area.setCursor(14*2, 22);
-  //        disp_area.print("@");
-  //        disp_area.setCursor(21*2, 22);
-  //        disp_area.printf("%.1fKbps", (float)(selected_radio->getBitrate())/1000.0);
-
-  //        disp_area.setCursor(2, 36);
-  //        disp_area.print("Airtime:");
-
-  //        disp_area.setCursor(7+12, 53);
-  //        if (selected_radio->getTotalChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getAirtime()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getAirtime()*100.0);
-  //        }
-
-  //        disp_area.drawBitmap(2, 41, bm_hg_low, 10, 18, DISPLAY_WHITE, DISPLAY_BLACK);
-
-  //        disp_area.setCursor(64+17, 53);
-  //        if (selected_radio->getLongtermChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getLongtermAirtime()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getLongtermAirtime()*100.0);
-  //        }
-  //        disp_area.drawBitmap(64, 41, bm_hg_high, 10, 18, DISPLAY_WHITE, DISPLAY_BLACK);
-
-  //        disp_area.setTextColor(DISPLAY_BLACK);
-
-  //        disp_area.setCursor(2, 88);
-  //        disp_area.print("Channel");
-  //        disp_area.setCursor(38*2, 88);
-  //        disp_area.print("Load:");
-  //      
-  //        disp_area.setCursor(7+12, 110);
-  //        if (selected_radio->getTotalChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getTotalChannelUtil()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getTotalChannelUtil()*100.0);
-  //        }
-  //        disp_area.drawBitmap(2, 98, bm_hg_low, 10, 18, DISPLAY_BLACK, DISPLAY_WHITE);
-
-  //        disp_area.setCursor(64+17, 110);
-  //        if (selected_radio->getLongtermChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getLongtermChannelUtil()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getLongtermChannelUtil()*100.0);
-  //        }
-  //        disp_area.drawBitmap(64, 98, bm_hg_high, 10, 18, DISPLAY_BLACK, DISPLAY_WHITE);
-  //      #else
-  //        selected_radio = interface_obj[online_interface_list[interface_page]];
-  //        disp_area.fillRect(0,8,disp_area.width(),37, DISPLAY_BLACK); disp_area.fillRect(0,37,disp_area.width(),27, DISPLAY_WHITE);
-  //        disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(DISPLAY_WHITE);
-
-  //        disp_area.setCursor(2, 13);
-  //        disp_area.print("On");
-  //        disp_area.setCursor(14, 13);
-  //        disp_area.print("@");
-  //        disp_area.setCursor(21, 13);
-  //        disp_area.printf("%.1fKbps", (float)(selected_radio->getBitrate())/1000.0);
-
-  //        disp_area.setCursor(2, 23-1);
-  //        disp_area.print("Airtime:");
-
-  //        disp_area.setCursor(11, 33-1);
-  //        if (selected_radio->getTotalChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getAirtime()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getAirtime()*100.0);
-  //        }
-
-  //        disp_area.drawBitmap(2, 26-1, bm_hg_low, 5, 9, DISPLAY_WHITE, DISPLAY_BLACK);
-
-  //        disp_area.setCursor(32+11, 33-1);
-
-  //        if (selected_radio->getLongtermChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getLongtermAirtime()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getLongtermAirtime()*100.0);
-  //        }
-  //        disp_area.drawBitmap(32+2, 26-1, bm_hg_high, 5, 9, DISPLAY_WHITE, DISPLAY_BLACK);
-
-  //        disp_area.setTextColor(DISPLAY_BLACK);
-
-  //        disp_area.setCursor(2, 46);
-  //        disp_area.print("Channel");
-  //        disp_area.setCursor(38, 46);
-  //        disp_area.print("Load:");
-
-  //        disp_area.setCursor(11, 57);
-  //        if (selected_radio->getTotalChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getTotalChannelUtil()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getTotalChannelUtil()*100.0);
-  //        }
-  //        disp_area.drawBitmap(2, 50, bm_hg_low, 5, 9, DISPLAY_BLACK, DISPLAY_WHITE);
-  //      
-  //        disp_area.setCursor(32+11, 57);
-  //        if (selected_radio->getLongtermChannelUtil() < 0.099) {
-  //          disp_area.printf("%.1f%%", selected_radio->getLongtermChannelUtil()*100.0);
-  //        } else {
-  //          disp_area.printf("%.0f%%", selected_radio->getLongtermChannelUtil()*100.0);
-  //        }
-  //        disp_area.drawBitmap(32+2, 50, bm_hg_high, 5, 9, DISPLAY_BLACK, DISPLAY_WHITE);
-  //      #endif
-
-  //    } else {
-  //      if (device_signatures_ok()) {
-  //        #if DISP_H == 122
-  //          disp_area.drawBitmap(0, 0, bm_def_lc, disp_area.width(), 71, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #else
-  //          disp_area.drawBitmap(0, 0, bm_def_lc, disp_area.width(), 37, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #endif
-  //      } else {
-  //        #if DISP_H == 122
-  //          disp_area.drawBitmap(0, 0, bm_def, disp_area.width(), 71, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #else
-  //          disp_area.drawBitmap(0, 0, bm_def, disp_area.width(), 37, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #endif
-  //      }
-  //    }
-
-  //    if (!hw_ready || !device_firmware_ok()) {
-  //      if (!device_firmware_ok()) {
-  //        #if DISP_H == 122
-  //          disp_area.drawBitmap(0, 71, bm_fw_corrupt, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #else
-  //          disp_area.drawBitmap(0, 37, bm_fw_corrupt, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #endif
-  //      } else {
-  //        if (!modems_installed) {
-  //          #if DISP_H == 122
-  //            disp_area.drawBitmap(0, 71, bm_no_radio, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          #else
-  //            disp_area.drawBitmap(0, 37, bm_no_radio, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          #endif
-  //        } else {
-  //            //disp_area.drawBitmap(0, 71, bm_hwfail, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          disp_area.drawBitmap(0, 37, bm_conf_missing, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        }
-  //      }
-  //    } else if (bt_state == BT_STATE_PAIRING and bt_ssp_pin != 0) {
-  //      char *pin_str = (char*)malloc(DISP_PIN_SIZE+1);
-  //      sprintf(pin_str, "%06d", bt_ssp_pin);
-
-  //      #if DISP_H == 122
-  //        disp_area.drawBitmap(0, 71, bm_pairing, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //      #else
-  //        disp_area.drawBitmap(0, 37, bm_pairing, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //      #endif
-  //      for (int i = 0; i < DISP_PIN_SIZE; i++) {
-  //        uint8_t numeric = pin_str[i]-48;
-  //        #if DISP_H == 122
-  //          uint8_t offset = numeric*20;
-  //          disp_area.drawBitmap(14+17*i, 71+32, bm_n_uh+offset, 10, 10, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #else
-  //          uint8_t offset = numeric*5;
-  //          disp_area.drawBitmap(7+9*i, 37+16, bm_n_uh+offset, 8, 5, DISPLAY_WHITE, DISPLAY_BLACK);
-  //        #endif
-  //      }
-  //      free(pin_str);
-  //    } else {
-  //      if (millis()-last_page_flip >= page_interval) {
-  //        disp_page = (++disp_page%pages);
-  //        last_page_flip = millis();
-  //        if (not community_fw and disp_page == 0) disp_page = 1;
-  //      }
-
-  //      if (radio_online) {
-  //        if (!display_diagnostics) {
-  //          #if DISP_H == 122
-  //            disp_area.drawBitmap(0, 37, bm_online, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          #else
-  //            disp_area.drawBitmap(0, 71, bm_online, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          #endif
-  //        }
-  //      } else {
-  //        if (disp_page == 0) {
-  //          if (true || device_signatures_ok()) {
-  //            #if DISP_H == 122
-  //              disp_area.drawBitmap(0, 71, bm_checks, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #else
-  //              disp_area.drawBitmap(0, 37, bm_checks, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #endif
-  //          } else {
-  //            #if DISP_H == 122
-  //              disp_area.drawBitmap(0, 71, bm_nfr, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #else
-  //              disp_area.drawBitmap(0, 37, bm_nfr, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #endif
-  //          }
-  //        } else if (disp_page == 1) {
-  //          if (!console_active) {
-  //            #if DISP_H == 122
-  //              disp_area.drawBitmap(0, 71, bm_hwok, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #else
-  //              disp_area.drawBitmap(0, 37, bm_hwok, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #endif
-  //          } else {
-  //            #if DISP_H == 122
-  //              disp_area.drawBitmap(0, 71, bm_console_active, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #else
-  //              disp_area.drawBitmap(0, 37, bm_console_active, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #endif
-  //          }
-  //        } else if (disp_page == 2) {
-  //          #if DISP_H == 122
-  //            disp_area.drawBitmap(0, 71, bm_version, disp_area.width(), 54, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          #else
-  //            disp_area.drawBitmap(0, 37, bm_version, disp_area.width(), 27, DISPLAY_WHITE, DISPLAY_BLACK);
-  //          #endif
-  //          char *v_str = (char*)malloc(3+1);
-  //          sprintf(v_str, "%01d%02d", MAJ_VERS, MIN_VERS);
-  //          for (int i = 0; i < 3; i++) {
-  //            #if DISP_H == 122
-  //            uint8_t dxp = 43;
-  //            uint8_t numeric = v_str[i]-48; uint8_t bm_offset = numeric*20;
-  //            if (i == 2) dxp += 9*2+6;
-  //            #else
-  //            uint8_t dxp = DISP_H * 0.32;
-  //            uint8_t numeric = v_str[i]-48; uint8_t bm_offset = numeric*5;
-  //            if (i == 2) dxp += 9*2+6;
-  //            #endif
-  //            if (i == 1) dxp += 9*1+4;
-  //            #if DISP_H == 122
-  //            // add gap manually rather than oversizing bitmap, as the gfx lib fills in the extra space with black
-  //            disp_area.drawBitmap(dxp, 71+32, bm_n_uh+bm_offset, 10, 10, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #else
-  //            disp_area.drawBitmap(dxp, 37+16, bm_n_uh+bm_offset, 8, 5, DISPLAY_WHITE, DISPLAY_BLACK);
-  //            #endif
-  //          }
-  //          free(v_str);
-  //          #if DISP_H == 122
-  //          disp_area.drawLine(27, 37+20, 28, 37+20, DISPLAY_BLACK);
-  //          disp_area.drawLine(27, 37+20, 28, 37+20, DISPLAY_BLACK);
-  //          #else
-  //          disp_area.drawLine(27, 37+19, 28, 37+19, DISPLAY_BLACK);
-  //          disp_area.drawLine(27, 37+19, 28, 37+19, DISPLAY_BLACK);
-  //          #endif
-  //        }
-  //      }
-  //    }
-  //  } else {
-  //      disp_area.drawBitmap(0, 0, fb, disp_area.width(), disp_area.height(), DISPLAY_WHITE, DISPLAY_BLACK);
-  //  }
-  //}
   if (!device_init_done || firmware_update_mode) {
     uint8_t p_by = 37;
     if (disp_mode == DISP_MODE_LANDSCAPE || firmware_update_mode) {
@@ -1270,8 +900,10 @@ void draw_disp_area() {
   } else {
     if (!disp_ext_fb or bt_ssp_pin != 0) {
       if (radio_online && display_diagnostics) {
-        disp_area.fillRect(0,8,disp_area.width(),37, DISPLAY_BLACK); disp_area.fillRect(0,37,disp_area.width(),27, DISPLAY_WHITE);
-        disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(DISPLAY_WHITE);
+
+        disp_area.fillRect(0,8,disp_area.width(),37, DISPLAY_BLACK); disp_area.fillRect(0,37,disp_area.width(),27, DISPLAY_WHITE); 
+
+        disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setTextColor(DISPLAY_WHITE); disp_area.setTextSize(1);
 
         selected_radio = interface_obj[online_interface_list[interface_page]];
 
