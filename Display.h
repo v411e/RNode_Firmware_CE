@@ -965,12 +965,25 @@ void draw_disp_area() {
         }
         disp_area.drawBitmap(32+2, 50, bm_hg_high, 5, 9, DISPLAY_BLACK, DISPLAY_WHITE);
 
+        disp_area.setTextColor(DISPLAY_BLACK); disp_area.setTextSize(1);
+
+        // TODO, for some reason there is a weird artifact at the top of the screen if this line isn't here. Need to investigate.
+        disp_area.fillRect(0,0,disp_area.width(),8,DISPLAY_WHITE);
+
+        // display device ID on top bar
+        disp_area.setCursor(4, 5); disp_area.print(bt_devname);
+
       } else {
         if (device_signatures_ok()) {
           disp_area.drawBitmap(0, 0, bm_def_lc, disp_area.width(), 37, DISPLAY_WHITE, DISPLAY_BLACK);      
         } else {
           disp_area.drawBitmap(0, 0, bm_def, disp_area.width(), 37, DISPLAY_WHITE, DISPLAY_BLACK);      
         }
+
+        // display device ID beneath header
+        disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setCursor(13, 32); disp_area.setTextColor(DISPLAY_WHITE); disp_area.setTextSize(2);
+        //disp_area.printf("%02X%02X", bt_dh[14], bt_dh[15]);
+        disp_area.printf("%02X%02X", 0xED, 0xFA);
       }
 
       if (!hw_ready || !device_firmware_ok()) {
