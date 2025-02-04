@@ -750,38 +750,63 @@
       #define HAS_SLEEP true
       #define PIN_WAKEUP GPIO_NUM_0
       #define WAKEUP_LEVEL 0
+
+      #define INTERFACE_COUNT 1
       const int pin_btn_usr1 = 0;
 
-      const int pin_cs = 7;
-      const int pin_reset = 8;
-      const int pin_sclk = 5;
-      const int pin_mosi = 6;
-      const int pin_miso = 3;
-      
-      #if MODEM == SX1262
-        #define DIO2_AS_RF_SWITCH true
-        #define HAS_BUSY true
-        #define HAS_TCXO true
-        const int pin_busy = 34;
-        const int pin_dio = 33;
-        const int pin_tcxo_enable = -1;
-      #elif MODEM == SX1280
-        #define CONFIG_QUEUE_SIZE 6144
-        #define DIO2_AS_RF_SWITCH false
-        #define HAS_BUSY true
-        #define HAS_TCXO true
-        #define HAS_PA true
-        const int pa_max_input = 3;
-
-        #define HAS_RF_SWITCH_RX_TX true
-        const int pin_rxen = 21;
-        const int pin_txen = 10;
-        
-        const int pin_busy = 36;
-        const int pin_dio = 9;
-        const int pin_tcxo_enable = -1;
-      #else
-        const int pin_dio = 9;
+      #if BOARD_VARIANT == MODEL_A1
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              false, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+               7, // pin_ss
+               5, // pin_sclk
+               6, // pin_mosi
+               3, // pin_miso
+              34, // pin_busy
+              33, // pin_dio
+               8, // pin_reset
+              -1, // pin_txen
+              -1, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
+      #elif BOARD_VARIANT == MODEL_AC // SX1280 with PA 
+      //#define CONFIG_UART_BUFFER_SIZE 40000
+      //#define CONFIG_QUEUE_0_SIZE 40000
+      #define CONFIG_QUEUE_0_SIZE 6144
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1280};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1280
+          {
+              false, // DEFAULT_SPI
+              false, // HAS_TCXO
+              false  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const uint8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1280
+          {
+               7, // pin_ss
+               5, // pin_sclk
+               6, // pin_mosi
+               3, // pin_miso
+              36, // pin_busy
+              9, // pin_dio
+               8, // pin_reset
+              10, // pin_txen
+              21, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
       #endif
       
       const int pin_np = 38;
