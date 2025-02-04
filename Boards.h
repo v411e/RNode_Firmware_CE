@@ -129,6 +129,9 @@
   #define OLED 0x01
   #define EINK_BW 0x02
   #define EINK_3C 0x03
+  #define MONO_OLED 0x04
+  #define TFT 0x05
+  #define ADAFRUIT_TFT 0x06
 
   #if defined(ESP32)
     #define PLATFORM PLATFORM_ESP32
