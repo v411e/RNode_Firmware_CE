@@ -1054,7 +1054,7 @@ sx127x::sx127x(uint8_t index, SPIClass* spi, int ss, int sclk, int mosi, int mis
     _spiSettings(8E6, MSBFIRST, SPI_MODE0),
     _spiModem(spi),
   _ss(ss), _sclk(sclk), _mosi(mosi), _miso(miso),  _reset(reset), _dio0(dio0),
-  _busy(busy), _frequency(0), _packetIndex(0), _preinit_done(false), _bw(0)
+  _busy(busy), _frequency(0), _packetIndex(0), _preinit_done(false), _bw(7800)
 { setTimeout(0); }
 
 void sx127x::setSPIFrequency(uint32_t frequency) { _spiSettings = SPISettings(frequency, MSBFIRST, SPI_MODE0); }
@@ -1114,7 +1114,7 @@ uint8_t ISR_VECT sx127x::singleTransfer(uint8_t address, uint8_t value) {
   return response;
 }
 
-int sx127x::begin() {
+void sx127x::reset() {
   if (_reset != -1) {
       pinMode(_reset, OUTPUT);
 
@@ -1124,6 +1124,10 @@ int sx127x::begin() {
       digitalWrite(_reset, HIGH);
       delay(10);
   }
+}
+
+int sx127x::begin() {
+    reset();
 
   sleep();
 
@@ -1799,7 +1803,7 @@ void sx128x::setPacketParams(uint32_t target_preamble, uint8_t headermode, uint8
   _last_preamble = target_preamble;
 }
 
-int sx128x::begin()
+void sx128x::reset()
 {
   if (_reset != -1) {
     pinMode(_reset, OUTPUT);
@@ -1810,6 +1814,11 @@ int sx128x::begin()
     digitalWrite(_reset, HIGH);
     delay(10);
   }
+}
+
+int sx128x::begin()
+{
+    reset();
 
   if (_rxen != -1) {
       pinMode(_rxen, OUTPUT);
