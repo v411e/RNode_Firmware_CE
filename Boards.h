@@ -411,7 +411,7 @@
       #define HAS_EEPROM true
       #define INTERFACE_COUNT 1
 
-      const uint8_t interfaces[INTERFACE_COUNT] = {SX127X};
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1276};
       #if HAS_TCXO == true
         const bool interface_cfg[INTERFACE_COUNT][3] = { 
                         // SX127X
