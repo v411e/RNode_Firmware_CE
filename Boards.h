@@ -582,7 +582,6 @@
       #define HAS_EEPROM true
       #define HAS_INPUT true
       #define HAS_SLEEP true
-      #define HAS_DISPLAY true
       #define DISPLAY EINK_BW
       #define DISPLAY_SCALE_OVERRIDE true
       #define DISPLAY_SCALE 1.90625
