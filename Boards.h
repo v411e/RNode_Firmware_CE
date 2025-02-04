@@ -522,6 +522,7 @@
     #elif BOARD_MODEL == BOARD_HELTEC32_V3
       #define IS_ESP32S3 true
       #define HAS_DISPLAY true
+      #define DISPLAY OLED
       #define HAS_BLUETOOTH false
       #define HAS_BLE true
       #define HAS_PMU true
