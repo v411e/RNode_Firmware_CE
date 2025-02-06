@@ -982,8 +982,7 @@ void draw_disp_area() {
 
         // display device ID beneath header
         disp_area.setFont(SMALL_FONT); disp_area.setTextWrap(false); disp_area.setCursor(13, 32); disp_area.setTextColor(DISPLAY_WHITE); disp_area.setTextSize(2);
-        //disp_area.printf("%02X%02X", bt_dh[14], bt_dh[15]);
-        disp_area.printf("%02X%02X", 0xED, 0xFA);
+        disp_area.printf("%02X%02X", bt_dh[14], bt_dh[15]);
       }
 
       if (!hw_ready || !device_firmware_ok()) {
