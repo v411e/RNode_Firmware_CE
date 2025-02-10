@@ -1495,9 +1495,6 @@ void loop() {
         }
         tx_queue_handler(selected_radio);
         selected_radio->checkModemStatus();
-
-      // debug
-      Serial.write("Bitrate :"); Serial.print(selected_radio->getBitrate()); Serial.write("\n");
     }
   
   } else {
