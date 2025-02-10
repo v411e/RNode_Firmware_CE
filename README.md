@@ -178,7 +178,7 @@ The source code includes an SX1276 driver that is released under MIT License, an
 
 You can obtain the source code from [my business Git instance](https://git.liberatedsystems.co.uk/jacob.eva/RNode_Firmware_CE) or [GitHub](https://github.com/liberatedsystems/RNode_Firmware_CE).
 
-Every RNode which supports the console functionality also includes an internal copy of it's own firmware source code, that can be downloaded through the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), by putting the RNode into Console Mode (which can be activated by pressing the reset button two times within two seconds).
+Every RNode which supports the console functionality also includes an internal copy of it's own firmware source code, that can be downloaded through the [RNode Bootstrap Console](https://unsigned.io/rnode_bootstrap_console), by putting the RNode into Console Mode (which can be activated by holding the user button for 10 seconds and releasing it).
 
 The RNode Ecosystem is free and non-proprietary, and actively seeks to distribute it's ownership and control. If you want to build RNodes for commercial purposes, including selling them, you must do so adhering to the Open Source licenses that the various parts of the RNode project is released under, and under your own responsibility.
 
