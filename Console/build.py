@@ -5,16 +5,19 @@ import shutil
 
 packages = {
     "rns": "rns-0.9.1-py3-none-any.whl",
-    "nomadnet": "nomadnet-0.5.7-py3-none-any.whl",
-    "lxmf": "lxmf-0.6.0-py3-none-any.whl",
+    "nomadnet": "nomadnet-0.6.0-py3-none-any.whl",
+    "lxmf": "lxmf-0.6.2-py3-none-any.whl",
     "rnsh": "rnsh-0.1.5-py3-none-any.whl",
 }
 
 DEFAULT_TITLE = "RNode Bootstrap Console"
 SOURCES_PATH="./source"
 BUILD_PATH="./build"
-PACKAGES_PATH = "../../dist_archive"
+
+# These paths may have to be changed depending on where you store these directories on your system
+PACKAGES_PATH = "../../../rns_build"
 RNS_SOURCE_PATH = "../../Reticulum"
+
 INPUT_ENCODING="utf-8"
 OUTPUT_ENCODING="utf-8"
 
@@ -174,7 +177,7 @@ mf.write(help_redirect)
 mf.close()
 
 def optimise_manual(path):
-    pm = 90
+    pm = 45
     scale_imgs = [
         ("_images/board_rnodev2.png", pm),
         ("_images/board_rnode.png", pm),

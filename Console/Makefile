@@ -1,5 +1,6 @@
+# These paths will have to be changed according to where you store these directories on your system
 PATH_RETICULUM_WEBSITE=../../sites/reticulum.network
-PATH_PACKAGES=../../dist_archive
+PATH_PACKAGES=../../../rns_build
 
 clean:
 	@echo Cleaning...
@@ -21,7 +22,7 @@ pages-debug:
 
 sourcepack:
 	@echo Packing firmware sources...
-	cd .. && zip -r build/pkg/rnode_firmware.zip * -x Builds/\* Console/\* Documentation/images/\* Documentation/RNode_v1_Manual.pdf Graphics/\* Python\ Module/\* Release/\* build/\* partition_hashes
+	cd .. && zip -r Console/build/pkg/rnode_firmware.zip * -x Builds/\* Console/\* Documentation/images/\* Documentation/RNode_v1_Manual.pdf Documentation/rnfw_1.jpg Graphics/\* Python\ Module/\* Release/\* build/\* partition_hashes
 	
 data:
 	@echo Including assets...
@@ -29,7 +30,7 @@ data:
 	@cp assets/gfx/* build/gfx/
 	@cp assets/images/* build/images/
 	@cp assets/stl/* build/3d/
-	#@cp assets/pkg/* build/pkg/
+	# @cp assets/pkg/* build/pkg/
 	# @cp assets/scripts/* build/scripts/
 	# @cp -r ../../Reticulum/docs/manual/* build/reticulum_manual/
 	# @cp -r ../../Reticulum/docs/Reticulum\ Manual.pdf build/reticulum_manual/
