@@ -182,7 +182,7 @@ uint32_t last_unblank_event = 0;
 uint32_t display_blanking_timeout = DISPLAY_BLANKING_TIMEOUT;
 uint8_t display_unblank_intensity = display_intensity;
 bool display_blanked = false;
-bool display_tx = false;
+bool display_tx[INTERFACE_COUNT] = {false};
 bool recondition_display = false;
 int disp_update_interval = 1000/disp_target_fps;
 int epd_update_interval = 1000/disp_target_fps;
@@ -204,11 +204,7 @@ uint8_t online_interface_list[INTERFACE_COUNT] = {0};
 
 uint8_t online_interfaces = 0;
 
-#if DISP_H == 64
 #define WATERFALL_SIZE 46
-#else
-#define WATERFALL_SIZE int(DISP_H * 0.75) // default to 75% of the display height
-#endif
 
 int waterfall[INTERFACE_COUNT][WATERFALL_SIZE] = {0};
 int waterfall_head[INTERFACE_COUNT] = {0};
@@ -753,30 +749,22 @@ void draw_signal_bars(int px, int py) {
   }
 }
 
-//#if MODEM == SX1280
-//  #define WF_TX_SIZE 5
-//#else
-  #define WF_TX_SIZE 5
-//#endif
+#define WF_TX_SIZE 5
 #define WF_RSSI_MAX -60
 #define WF_RSSI_MIN -135
 #define WF_RSSI_SPAN (WF_RSSI_MAX - WF_RSSI_MIN)
-#if disp_mode == DISP_MODE_LANDSCAPE
-#define WF_PIXEL_WIDTH (DISP_H / WF_RSSI_SPAN)
-#else
-#define WF_PIXEL_WIDTH (DISP_W / WF_RSSI_SPAN)
-#endif
+#define WF_PIXEL_WIDTH 10
 void draw_waterfall(int px, int py) {
   int rssi_val = interface_obj[interface_page]->currentRssi();
   if (rssi_val < WF_RSSI_MIN) rssi_val = WF_RSSI_MIN;
   if (rssi_val > WF_RSSI_MAX) rssi_val = WF_RSSI_MAX;
   int rssi_normalised = ((rssi_val - WF_RSSI_MIN)*(1.0/WF_RSSI_SPAN))*WF_PIXEL_WIDTH;
-  if (display_tx) {
+  if (display_tx[interface_page]) {
     for (uint8_t i; i < WF_TX_SIZE; i++) {
       waterfall[interface_page][waterfall_head[interface_page]++] = -1;
       if (waterfall_head[interface_page] >= WATERFALL_SIZE) waterfall_head[interface_page] = 0;
     }
-    display_tx = false;
+    display_tx[interface_page] = false;
   } else {
     waterfall[interface_page][waterfall_head[interface_page]++] = rssi_normalised;
     if (waterfall_head[interface_page] >= WATERFALL_SIZE) waterfall_head[interface_page] = 0;

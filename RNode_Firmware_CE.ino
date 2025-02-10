@@ -660,6 +660,10 @@ void flush_queue(RadioInterface* radio) {
   queued_bytes[index] = 0;
   selected_radio->updateAirtime();
   queue_flushing = false;
+
+  #if HAS_DISPLAY
+    display_tx[radio->getIndex()] = true;
+  #endif
 }
 
 void pop_queue(RadioInterface* radio) {
@@ -696,7 +700,7 @@ void pop_queue(RadioInterface* radio) {
   queue_flushing = false;
 
   #if HAS_DISPLAY
-    display_tx = true;
+    display_tx[radio->getIndex()] = true;
   #endif
 }
 
