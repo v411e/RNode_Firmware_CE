@@ -659,10 +659,10 @@ void flush_queue(RadioInterface* radio) {
 
   }
 
+  queue_flushing = false;
   queue_height[index] = 0;
   queued_bytes[index] = 0;
-  selected_radio->updateAirtime();
-  queue_flushing = false;
+  radio->updateAirtime();
 
   #if HAS_DISPLAY
     display_tx[radio->getIndex()] = true;
@@ -670,16 +670,12 @@ void flush_queue(RadioInterface* radio) {
 }
 
 void pop_queue(RadioInterface* radio) {
-    uint8_t index = radio->getIndex();
+  uint8_t index = radio->getIndex();
   if (!queue_flushing) {
     queue_flushing = true;
     led_tx_on(); uint16_t processed = 0;
 
-    #if MCU_VARIANT == MCU_ESP32 || MCU_VARIANT == MCU_NRF52
     if (!fifo16_isempty(&packet_starts[index])) {
-    #else
-    if (!fifo16_isempty_locked(&packet_starts[index])) {
-    #endif
 
       uint16_t start = fifo16_pop(&packet_starts[index]);
       uint16_t length = fifo16_pop(&packet_lengths[index]);
@@ -691,6 +687,7 @@ void pop_queue(RadioInterface* radio) {
 
         transmit(radio, length); processed++;
       }
+
       queue_height[index] -= processed;
       queued_bytes[index] -= length;
     }
@@ -701,10 +698,11 @@ void pop_queue(RadioInterface* radio) {
   radio->updateAirtime();
 
   queue_flushing = false;
-
+  
   #if HAS_DISPLAY
     display_tx[radio->getIndex()] = true;
   #endif
+
 }
 
 void transmit(RadioInterface* radio, uint16_t size) {
@@ -728,8 +726,15 @@ void transmit(RadioInterface* radio, uint16_t size) {
 
         // Only start a new packet if this is a split packet and it has
         // exceeded the length of a single packet
-        if (written == 255 && header & 0x0F) {
-          radio->endPacket(); radio->addAirtime();
+        if (written == 255 && isSplitPacket(header)) {
+          if (!radio->endPacket()) {
+              kiss_indicate_error(ERROR_MODEM_TIMEOUT);
+              kiss_indicate_error(ERROR_TXFAILED);
+              led_indicate_error(5);
+              hard_reset();
+          }
+
+          radio->addAirtime();
           radio->beginPacket();
           radio->write(header);
           written = 1;
@@ -875,6 +880,7 @@ void serial_callback(uint8_t sbyte) {
             }
             if (frame_len < CMD_L) cmdbuf[frame_len++] = sbyte;
         }
+        
 
         if (frame_len == 4) {
           selected_radio = interface_obj[interface];
