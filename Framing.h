@@ -106,6 +106,14 @@
   #define ERROR_MEMORY_LOW    0x05
   #define ERROR_MODEM_TIMEOUT 0x06
 
+  // Serial logging
+  #define LOG_MSG         0x2F
+
+  #define MSG_INFO        0x01
+  #define MSG_ERR         0x02
+  #define MSG_DBG         0x03
+  #define MSG_TRACE       0x04
+
   // Serial framing variables
   size_t frame_len;
   bool IN_FRAME = false;

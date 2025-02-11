@@ -1712,4 +1712,24 @@ void unlock_rom() {
 	eeprom_erase();
 }
 
+void log_debug(const char* msg) {
+    serial_write(FEND);
+    serial_write(LOG_MSG);
+    serial_write(MSG_DBG);
+    for (int i = 0; i < strlen(msg); i++) {
+        escaped_serial_write(msg[i]);
+    }
+    serial_write(FEND);
+}
+
+void log_debug(char* msg) {
+    serial_write(FEND);
+    serial_write(LOG_MSG);
+    serial_write(MSG_DBG);
+    for (int i = 0; i < strlen(msg); i++) {
+        escaped_serial_write(msg[i]);
+    }
+    serial_write(FEND);
+}
+
 #include "src/misc/FIFOBuffer.h"
