@@ -66,6 +66,9 @@ volatile uint16_t queued_bytes[INTERFACE_COUNT] = {0};
 volatile uint16_t queue_cursor[INTERFACE_COUNT] = {0};
 volatile uint16_t current_packet_start[INTERFACE_COUNT] = {0};
 volatile bool serial_buffering = false;
+
+extern void setup_interfaces(); // from /src/misc/ModemISR.h
+
 #if HAS_BLUETOOTH || HAS_BLE == true
   bool bt_init_ran = false;
 #endif
