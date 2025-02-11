@@ -5,6 +5,7 @@
 // Obviously still under the MIT license.
 
 #include "Radio.hpp"
+#include "src/misc/ModemISR.h"
 
 #if PLATFORM == PLATFORM_ESP32 
   #if defined(ESP32) and !defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -90,31 +91,6 @@
 
 extern FIFOBuffer packet_rdy_interfaces;
 extern RadioInterface* interface_obj[];
-
-// ISRs cannot provide parameters to the functions they call. Since we have
-// multiple interfaces, we have to read each dio0 pin for each one and see
-// which one is high. We can then use the index of this pin in the 2D array to
-// signal the correct interface to the main loop 
-void ISR_VECT onDio0Rise() {
-    BaseType_t int_status = taskENTER_CRITICAL_FROM_ISR();
-    for (int i = 0; i < INTERFACE_COUNT; i++) {
-        if (digitalRead(interface_pins[i][5]) == HIGH) {
-            if (interface_obj[i]->getPacketValidity()) {
-                interface_obj[i]->handleDio0Rise();
-            }
-            if (interfaces[i] == SX1280) {
-                // On the SX1280, there is a bug which can cause the busy line
-                // to remain high if a high amount of packets are received when
-                // in continuous RX mode. This is documented as Errata 16.1 in
-                // the SX1280 datasheet v3.2 (page 149)
-                // Therefore, the modem is set into receive mode each time a packet is received.
-                interface_obj[i]->receive();
-            }
-            break;
-        }
-    }
-    taskEXIT_CRITICAL_FROM_ISR(int_status);
-}
 
 sx126x::sx126x(uint8_t index, SPIClass* spi, bool tcxo, bool dio2_as_rf_switch, int ss, int sclk, int mosi, int miso, int reset, int dio0, int busy, int rxen) :
   RadioInterface(index),
@@ -669,9 +645,9 @@ void sx126x::onReceive(void(*callback)(uint8_t, int))
     _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
 #endif
     // make function available
-    extern void onDio0Rise();
+    extern void (*onIntRise[INTERFACE_COUNT])();
 
-    attachInterrupt(digitalPinToInterrupt(_dio0), onDio0Rise, RISING);
+    attachInterrupt(digitalPinToInterrupt(_dio0), onIntRise[_index], RISING);
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
 #ifdef SPI_HAS_NOTUSINGINTERRUPT
@@ -1321,10 +1297,9 @@ void sx127x::onReceive(void(*callback)(uint8_t, int)) {
     #endif
     
     // make function available
-    extern void onDio0Rise();
+    extern void (*onIntRise[INTERFACE_COUNT])();
 
-    attachInterrupt(digitalPinToInterrupt(_dio0), onDio0Rise, RISING);
-  
+    attachInterrupt(digitalPinToInterrupt(_dio0), onIntRise[_index], RISING);
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
     
@@ -2106,9 +2081,9 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
 #endif
 
     // make function available
-    extern void onDio0Rise();
+    extern void (*onIntRise[INTERFACE_COUNT])();
 
-    attachInterrupt(digitalPinToInterrupt(_dio0), onDio0Rise, RISING);
+    attachInterrupt(digitalPinToInterrupt(_dio0), onIntRise[_index], RISING);
   } else {
     detachInterrupt(digitalPinToInterrupt(_dio0));
 #ifdef SPI_HAS_NOTUSINGINTERRUPT
