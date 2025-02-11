@@ -182,8 +182,8 @@ void setup() {
   modem_packet_queue = xQueueCreate(MODEM_QUEUE_SIZE, sizeof(modem_packet_t*));
 
   for (int i = 0; i < INTERFACE_COUNT; i++) {
-      fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH+1);
-      fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH+1);
+      fifo16_init(&packet_starts[i], packet_starts_buf, CONFIG_QUEUE_MAX_LENGTH);
+      fifo16_init(&packet_lengths[i], packet_lengths_buf, CONFIG_QUEUE_MAX_LENGTH);
       packet_queue[i] = (uint8_t*)malloc(getQueueSize(i)+1);
   }
 
