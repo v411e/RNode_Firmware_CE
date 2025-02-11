@@ -62,7 +62,7 @@
 
 #define PHY_HEADER_LORA_SYMBOLS 8
 
-#define MODEM_TIMEOUT_MULT 1.1
+#define MODEM_TIMEOUT_MULT 1.5
 
 // Status flags
 const uint8_t SIG_DETECT = 0x01;
