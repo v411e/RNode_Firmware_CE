@@ -182,6 +182,8 @@ void setup() {
   memset(seq, 0xFF, sizeof(seq));
   memset(read_len, 0, sizeof(read_len));
 
+  setup_interfaces();
+
   modem_packet_queue = xQueueCreate(MODEM_QUEUE_SIZE, sizeof(modem_packet_t*));
 
   for (int i = 0; i < INTERFACE_COUNT; i++) {
