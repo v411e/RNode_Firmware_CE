@@ -645,7 +645,7 @@ void sx126x::onReceive(void(*callback)(uint8_t, int))
     _spiModem->usingInterrupt(digitalPinToInterrupt(_dio0));
 #endif
     // make function available
-    extern void (*onIntRise[INTERFACE_COUNT])();
+    extern void (*onIntRise[INTERFACE_COUNT])(void);
 
     attachInterrupt(digitalPinToInterrupt(_dio0), onIntRise[_index], RISING);
   } else {
@@ -1297,7 +1297,7 @@ void sx127x::onReceive(void(*callback)(uint8_t, int)) {
     #endif
     
     // make function available
-    extern void (*onIntRise[INTERFACE_COUNT])();
+    extern void (*onIntRise[INTERFACE_COUNT])(void);
 
     attachInterrupt(digitalPinToInterrupt(_dio0), onIntRise[_index], RISING);
   } else {
@@ -2081,7 +2081,7 @@ void sx128x::onReceive(void(*callback)(uint8_t, int))
 #endif
 
     // make function available
-    extern void (*onIntRise[INTERFACE_COUNT])();
+    extern void (*onIntRise[INTERFACE_COUNT])(void);
 
     attachInterrupt(digitalPinToInterrupt(_dio0), onIntRise[_index], RISING);
   } else {

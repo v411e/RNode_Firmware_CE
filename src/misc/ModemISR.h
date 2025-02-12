@@ -39,7 +39,7 @@ void onInt1Rise() {
 }
 
 void setup_interfaces() {
-    onIntRise[0] = &onInt0Rise;
-    onIntRise[1] = &onInt1Rise;
+    onIntRise[0] = onInt0Rise;
+    onIntRise[1] = onInt1Rise;
 }
 #endif
