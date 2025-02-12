@@ -15,13 +15,14 @@
 
 #include <Adafruit_GFX.h>
 
+#define DISP_W 128
+#define DISP_H 64
+
 #if DISPLAY == OLED
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
 #define DISPLAY_BLACK SSD1306_BLACK
 #define DISPLAY_WHITE SSD1306_WHITE
-#define DISP_W 128
-#define DISP_H 64
 
 #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
 void (*display_callback)();
@@ -33,15 +34,21 @@ void busyCallback(const void* p) { display_callback(); }
 #elif DISPLAY == ADAFRUIT_TFT
     // t-deck
     #include <Adafruit_ST7789.h>
+    #define DISPLAY_WHITE ST77XX_WHITE
+    #define DISPLAY_BLACK ST77XX_BLACK
 
 #elif DISPLAY == TFT
     // t114
-    #include "ST7789.h"
-    //#define COLOR565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3))
+    #include "src/display/ST7789.h"
+    #define DISPLAY_WHITE ST77XX_WHITE
+    #define DISPLAY_BLACK ST77XX_BLACK
+    #define COLOR565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3))
 
 #elif DISPLAY == MONO_OLED
     // tbeam_s
     #include <Adafruit_SH110X.h>
+    #define DISPLAY_WHITE SH110X_WHITE
+    #define DISPLAY_BLACK SH110X_BLACK
 #endif
 
 #if DISPLAY == EINK_BW
@@ -295,7 +302,7 @@ uint8_t display_contrast = 0x00;
     }
     level = value;
   }
-#elif BOARD_MODEL == BOARD_OPENCOM_XL || BOARD_MODEL == BOARD_H_W_PAPER
+#elif BOARD_MODEL == BOARD_OPENCOM_XL || BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_H_W_PAPER
   // no backlight on these displays
   void set_contrast (void* display, uint8_t contrast) {};
 #else
@@ -858,7 +865,7 @@ void update_stat_area() {
       drawBitmap(p_as_x, p_as_y, stat_area.getBuffer(), stat_area.width(), stat_area.height(), DISPLAY_WHITE, DISPLAY_BLACK);
     } else if (disp_mode == DISP_MODE_LANDSCAPE) {
       drawBitmap(p_as_x+2, p_as_y, stat_area.getBuffer(), stat_area.width(), stat_area.height(), DISPLAY_WHITE, DISPLAY_BLACK);
-      if (device_init_done && !disp_ext_fb) display.drawLine(p_as_x, 0, p_as_x, DISP_W/2, DISPLAY_WHITE);
+      if (device_init_done && !disp_ext_fb) drawLine(p_as_x, 0, p_as_x, DISP_W/2, DISPLAY_WHITE);
     }
 
   } else {
@@ -1047,7 +1054,6 @@ void update_disp_area() {
   drawBitmap(p_ad_x, p_ad_y, disp_area.getBuffer(), disp_area.width(), disp_area.height(), DISPLAY_WHITE, DISPLAY_BLACK);
   if (disp_mode == DISP_MODE_LANDSCAPE) {
     if (device_init_done && !firmware_update_mode && !disp_ext_fb) {
-      //display.drawLine(0, 0, 0, 63, DISPLAY_WHITE);
       drawLine(0, 0, 0, 63, DISPLAY_WHITE);
     }
   }
