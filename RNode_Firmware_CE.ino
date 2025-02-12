@@ -18,8 +18,8 @@
 #include "Utilities.h"
 
 #if MCU_VARIANT == MCU_NRF52
-  #define INTERFACE_SPI
   #if BOARD_MODEL == BOARD_RAK4631 || BOARD_MODEL == BOARD_OPENCOM_XL
+      #define INTERFACE_SPI
         // Required because on RAK4631, non-default SPI pins must be initialised when class is declared.
       SPIClass interface_spi[1] = {
             // SX1262
@@ -31,6 +31,18 @@
                )
       };
   #elif BOARD_MODEL == BOARD_TECHO
+    #define INTERFACE_SPI
+    SPIClass interface_spi[1] = {
+            // SX1262
+            SPIClass(
+                NRF_SPIM3, 
+                interface_pins[0][3], 
+                interface_pins[0][1], 
+                interface_pins[0][2]
+               )
+      };
+  #elif BOARD_MODEL == BOARD_HELTEC_T114
+    #define INTERFACE_SPI
     SPIClass interface_spi[1] = {
             // SX1262
             SPIClass(
