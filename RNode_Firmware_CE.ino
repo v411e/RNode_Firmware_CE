@@ -46,7 +46,7 @@
     SPIClass interface_spi[1] = {
             // SX1262
             SPIClass(
-                NRF_SPIM3, 
+                NRF_SPIM1, 
                 interface_pins[0][3], 
                 interface_pins[0][1], 
                 interface_pins[0][2]
@@ -132,7 +132,13 @@ void setup() {
       pinMode(PIN_LED_GREEN, OUTPUT);
       pinMode(PIN_LED_BLUE, OUTPUT);
       delay(200);
+    #elif BOARD_MODEL == BOARD_HELTEC_T114
+      delay(200);
+      pinMode(PIN_VEXT_EN, OUTPUT);
+      digitalWrite(PIN_VEXT_EN, HIGH);
+      delay(100);
     #endif
+
 
     if (!eeprom_begin()) { Serial.write("EEPROM initialisation failed.\r\n"); }
   #endif
@@ -207,6 +213,11 @@ void setup() {
   memset(packet_rdy_interfaces_buf, 0, sizeof(packet_rdy_interfaces_buf));
 
   fifo_init(&packet_rdy_interfaces, packet_rdy_interfaces_buf, MAX_INTERFACES);
+
+  #if HAS_GPS
+  // init GPS
+  gps_s.begin(GPS_BAUD_RATE);
+  #endif
 
   // add call to init_channel_stats here? \todo
 
@@ -1545,7 +1556,7 @@ void loop() {
   process_serial();
 
   #if HAS_DISPLAY
-    #if DISPLAY == OLED
+    #if DISPLAY == OLED || DISPLAY == TFT || DISPLAY == ADAFRUIT_TFT
     if (disp_ready) update_display();
     #elif DISPLAY == EINK_BW || DISPLAY == EINK_3C
     // Display refreshes take so long on e-paper displays that they can disrupt
@@ -1575,6 +1586,20 @@ void loop() {
 
   #if HAS_INPUT
     input_read();
+  #endif
+
+  #if HAS_GPS
+    while (gps_s.available() > 0) {
+      if (gps.encode(gps_s.read()) && millis() - last_gps >= GPS_INTERVAL) {
+          kiss_indicate_location();
+          last_gps = millis();
+      }
+    }
+    if (millis() > 5000 && gps.charsProcessed() < 10) {
+        while (true) {
+            Serial.println(F("No GPS detected: check wiring."));
+        }
+    }
   #endif
 
   if (memory_low) {

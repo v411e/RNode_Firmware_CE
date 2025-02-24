@@ -111,6 +111,7 @@
   #define BOARD_HELTEC_T114   0x3C
   #define MODEL_C6            0xC6 // Heltec Mesh Node T114, 470-510 MHz
   #define MODEL_C7            0xC7 // Heltec Mesh Node T114, 863-928 MHz
+  #define MODEL_CB            0xCB // Heltec Mesh Node T114, 863-928 MHz + GPS
 
   #define PRODUCT_TECHO       0x15 // LilyGO T-Echo devices
   #define BOARD_TECHO         0x44
@@ -131,7 +132,6 @@
   #define EINK_3C 0x03
   #define MONO_OLED 0x04
   #define TFT 0x05
-  #define ADAFRUIT_TFT 0x06
 
   #if defined(ESP32)
     #define PLATFORM PLATFORM_ESP32
@@ -850,6 +850,7 @@
     #elif BOARD_MODEL == BOARD_TDECK
       #define IS_ESP32S3 true
       #define HAS_DISPLAY false
+      #define DISPLAY TFT // to be tested...
       #define HAS_CONSOLE false
       #define HAS_BLUETOOTH false
       #define HAS_BLE true
@@ -1239,7 +1240,6 @@
       #define HAS_BUSY true
       #define HAS_INPUT true
       #define HAS_SLEEP true
-      #define DIO2_AS_RF_SWITCH true
       #define CONFIG_UART_BUFFER_SIZE 6144
       #define CONFIG_QUEUE_SIZE 6144
       #define CONFIG_QUEUE_MAX_LENGTH 200
@@ -1270,7 +1270,7 @@
       // pins for ST7789 display on Heltec T114
       const int DISPLAY_DC = 12;
       const int DISPLAY_CS = 11;
-      const int DISPLAY_MISO = 11;
+      const int DISPLAY_MISO = 11; // not connected
       const int DISPLAY_MOSI = 9;
       const int DISPLAY_CLK = 8;
       const int DISPLAY_BL_PIN = PIN_T114_TFT_BLGT;
@@ -1302,6 +1302,13 @@
               -1  // pin_tcxo_enable
           }
       };
+
+      #if BOARD_VARIANT == MODEL_CB
+      #define HAS_GPS true
+      #define GPS_BAUD_RATE 9600
+      #define PIN_GPS_RX 37
+      #define PIN_GPS_TX 39 
+      #endif
     #else
       #error An unsupported nRF board was selected. Cannot compile RNode firmware.
     #endif

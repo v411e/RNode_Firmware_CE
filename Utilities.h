@@ -61,6 +61,10 @@ uint8_t eeprom_read(uint32_t mapped_addr);
 	#include "Input.h"
 #endif
 
+#if HAS_GPS
+    #include "src/misc/gps.h"
+#endif
+
 #if MCU_VARIANT == MCU_ESP32 || MCU_VARIANT == MCU_NRF52
 	#include "Device.h"
 #endif
@@ -1710,6 +1714,33 @@ void eeprom_conf_delete() {
 void unlock_rom() {
 	led_indicate_error(50);
 	eeprom_erase();
+}
+
+void kiss_indicate_location() {
+    char location[10];
+    int len;
+    int32_t val;
+    if (gps.location.isValid()) {
+        serial_write(FEND);
+        serial_write(CMD_GPS);
+        serial_write(GPS_CMD_LAT);
+        val = gps.location.lat() * 1000000;
+        escaped_serial_write(val>>24);
+        escaped_serial_write(val>>16);
+        escaped_serial_write(val>>8);
+        escaped_serial_write(val);
+        serial_write(FEND);
+
+        serial_write(FEND);
+        serial_write(CMD_GPS);
+        serial_write(GPS_CMD_LNG);
+        val = gps.location.lng() * 1000000;
+        escaped_serial_write(val>>24);
+        escaped_serial_write(val>>16);
+        escaped_serial_write(val>>8);
+        escaped_serial_write(val);
+        serial_write(FEND);
+    }
 }
 
 void log_debug(const char* msg) {

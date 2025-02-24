@@ -106,6 +106,11 @@
   #define ERROR_MEMORY_LOW    0x05
   #define ERROR_MODEM_TIMEOUT 0x06
 
+  #define CMD_GPS         0xA0
+
+  #define GPS_CMD_LAT     0x00
+  #define GPS_CMD_LNG     0x01
+
   // Serial logging
   #define LOG_MSG         0x2F
 
