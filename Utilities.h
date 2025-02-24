@@ -1717,6 +1717,7 @@ void unlock_rom() {
 }
 
 void kiss_indicate_location() {
+    #if HAS_GPS
     char location[10];
     int len;
     int32_t val;
@@ -1741,6 +1742,7 @@ void kiss_indicate_location() {
         escaped_serial_write(val);
         serial_write(FEND);
     }
+    #endif
 }
 
 void log_debug(const char* msg) {
