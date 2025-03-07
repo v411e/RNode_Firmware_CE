@@ -45,7 +45,7 @@ You must have at least version `2.1.3` of `rnodeconf` installed to update your R
 | LilyGO LoRa32 v2.1 |  [Buy here](https://www.lilygo.cc/products/lora3) | SX1276/8 | ESP32 | With and without TCXO |
 | Heltec LoRa32 v2 | No link | SX1276/8 | ESP32 | Discontinued? |
 | Heltec LoRa32 v3 | [Buy here](https://heltec.org/project/wifi-lora-32-v3/) | SX1262 | ESP32 | 
-| LilyGo T3S3 v1.0 | [Buy here](https://lilygo.cc/products/t3s3-v1-0) | SX1262 / SX1276 / SX1280 | ESP32-S3 |
+| LilyGo T3S3 v1.0 | [Buy here](https://lilygo.cc/products/t3s3-v1-0) | SX1262 or SX1276 or SX1280 | ESP32-S3 |
 | Heltec T114 | [Buy here](https://heltec.org/project/mesh-node-t114/) | SX1262 | nRF52 | 
 | Homebrew ESP32 boards | | Any supported | ESP32 | This can be any board with an Adafruit Feather (or generic) ESP32 chip |
 
