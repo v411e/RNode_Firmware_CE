@@ -1623,7 +1623,7 @@ void process_serial() {
 void sleep_now() {
   #if HAS_SLEEP == true
     #if PLATFORM == PLATFORM_ESP32
-      #if BOARD_MODEL == BOARD_T3S3
+      #if BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_XIAO_ESP32C3
         display_intensity = 0;
         update_display(true);
       #endif

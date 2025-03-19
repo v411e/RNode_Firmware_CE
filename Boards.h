@@ -64,6 +64,10 @@
   #define MODEL_DB            0xDB // LilyGO T-Beam Supreme, 433 MHz
   #define MODEL_DC            0xDC // LilyGO T-Beam Supreme, 868 MHz
 
+  #define PRODUCT_XIAO_ESP32S3  0xEB // Xiao ESP32S3 - sold by Seeed Studio
+  #define BOARD_XIAO_ESP32S3    0x3E
+  #define MODEL_DD            0xDD // Xiao ESP32S3, 868 MHz
+
   #define PRODUCT_T32_10      0xB2 // T3 v1.0 - sold by LilyGO
   #define BOARD_LORA32_V1_0   0x39
   #define MODEL_BA            0xBA // LilyGO T3 v1.0, 433 MHz
@@ -90,7 +94,7 @@
   #define MODEL_CA            0xCA // Heltec Lora32 v3, 868 MHz
   
   #define PRODUCT_H_W_PAPER   0xC3
-  #define BOARD_H_W_PAPER     0x3E
+  #define BOARD_H_W_PAPER     0x3F
   #define MODEL_C8            0xC8
 
   #define PRODUCT_RAK4631     0x10 // RAK4631 - sold by RAKWireless
@@ -1023,6 +1027,79 @@
               -1  // pin_tcxo_enable
           }
       };
+ #elif BOARD_MODEL == BOARD_XIAO_ESP32S3
+      #define IS_ESP32S3 true
+
+      #define HAS_DISPLAY true
+      #define DISPLAY OLED
+      //#define HAS_CONSOLE true
+      #define HAS_BLUETOOTH false
+      #define HAS_BLE true
+      //#define HAS_PMU true
+      #define HAS_NP false
+      #define HAS_SD false
+      #define HAS_EEPROM true
+
+      #define HAS_INPUT true
+      #define HAS_SLEEP true
+      #define PIN_WAKEUP GPIO_NUM_21
+      #define WAKEUP_LEVEL 0
+
+      #define INTERFACE_COUNT 1
+
+//      #define PMU_IRQ 40
+//      #define I2C_SCL 41
+//      #define I2C_SDA 42
+
+      // Wio-SX1262 button pulls down GPIO21
+      // THis is shared with the Yellow LED
+      // on the ESP32S3 (also active Low)
+      const int pin_btn_usr1 = 21;
+
+      const uint8_t interfaces[INTERFACE_COUNT] = {SX1262};
+      const bool interface_cfg[INTERFACE_COUNT][3] = { 
+                    // SX1262
+          {
+              true, // DEFAULT_SPI
+              true, // HAS_TCXO
+              true  // DIO2_AS_RF_SWITCH
+          }, 
+      };
+      const int8_t interface_pins[INTERFACE_COUNT][10] = { 
+                  // SX1262
+          {
+              41, // pin_ss
+              7, // pin_sclk
+              9, // pin_mosi
+              8, // pin_miso
+              40, // pin_busy
+              39, // pin_dio
+              42, // pin_reset
+              -1, // pin_txen
+              -1, // pin_rxen
+              -1  // pin_tcxo_enable
+          }
+      };
+
+//      const int SD_MISO = 37;
+//      const int SD_MOSI = 35;
+//      const int SD_CLK = 36;
+//      const int SD_CS = 47;
+
+//      const int IMU_CS = 34;
+
+      // HAS LED/tx on Wio board - 48 Hi/ON
+      // LED 21 on ESP board - Lo/ON/Yellow
+      // shared with button input.
+      #if HAS_NP == false
+        #if defined(EXTERNAL_LEDS)
+          const int pin_led_rx = -1;
+          const int pin_led_tx = 48; //47;
+        #else
+          const int pin_led_rx = -1;
+          const int pin_led_tx = 48; //47;
+        #endif
+      #endif
     #else
       #error An unsupported ESP32 board was selected. Cannot compile RNode firmware.
     #endif
