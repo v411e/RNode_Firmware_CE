@@ -409,9 +409,12 @@
       #define DISPLAY OLED
       #define HAS_BLUETOOTH true
       #define HAS_PMU true
+      #define HAS_NP true
       #define HAS_CONSOLE true
       #define HAS_EEPROM true
       #define INTERFACE_COUNT 1
+      
+      const int pin_np = 12;
 
       const uint8_t interfaces[INTERFACE_COUNT] = {SX1276};
       #if HAS_TCXO == true
